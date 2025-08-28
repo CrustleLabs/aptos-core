@@ -55,7 +55,7 @@ impl EntryPointTransactionGenerator {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl UserModuleTransactionGenerator for EntryPointTransactionGenerator {
     fn initialize_package(
         &mut self,

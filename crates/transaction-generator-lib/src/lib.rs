@@ -152,8 +152,8 @@ pub struct CounterState {
     pub by_client: HashMap<String, (AtomicUsize, AtomicUsize, AtomicUsize)>,
 }
 
-#[async_trait]
-pub trait ReliableTransactionSubmitter: Sync + Send {
+#[async_trait(?Send)]
+pub trait ReliableTransactionSubmitter {
     async fn get_account_balance(&self, account_address: AccountAddress) -> Result<u64>;
 
     async fn query_sequence_number(&self, account_address: AccountAddress) -> Result<u64>;

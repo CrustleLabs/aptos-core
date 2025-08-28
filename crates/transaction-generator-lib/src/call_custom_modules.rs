@@ -31,7 +31,7 @@ pub type TransactionGeneratorWorker = dyn Fn(
     + Send
     + Sync;
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait UserModuleTransactionGenerator: Sync + Send {
     /// Called for each instance of the module we publish,
     /// if any additional transactions are needed to setup the package.
@@ -72,7 +72,7 @@ impl PlainUserModuleTransactionGenerator {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl UserModuleTransactionGenerator for PlainUserModuleTransactionGenerator {
     async fn create_generator_fn(
         &self,
@@ -190,6 +190,7 @@ impl CustomModulesDelegationGeneratorCreator {
             rng: None,
         }
     }
+
 
     pub async fn create_worker(
         init_txn_factory: TransactionFactory,
