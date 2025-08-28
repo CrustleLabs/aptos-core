@@ -423,21 +423,21 @@ fn print_gas_cost_with_statement_and_tps(
     summary: SummaryExeAndIO,
     tps: f64,
 ) {
+    let exe_and_io_gas = fee_statement.map_or(0, |fee_statement| fee_statement.execution_gas_used() + fee_statement.io_gas_used());
     println!(
         "{:9} | {:9.6} | {:9.6} | {:9.6} | {:8} | {:8.2} | {:8.2} | {:8.2} | {:8.2} | {:8.0} | {}",
         gas_units,
         dollar_cost(gas_units, 5),
         dollar_cost(gas_units, 15),
         dollar_cost(gas_units, 30),
-        fee_statement.unwrap().execution_gas_used() + fee_statement.unwrap().io_gas_used(),
+        exe_and_io_gas,
         // fee_statement.unwrap().execution_gas_used(),
         // fee_statement.unwrap().io_gas_used(),
         summary.intrinsic_cost,
         summary.execution_cost,
         summary.read_cost,
         summary.write_cost,
-        (fee_statement.unwrap().execution_gas_used() + fee_statement.unwrap().io_gas_used()) as f64
-            * tps,
+        (exe_and_io_gas) as f64 * tps,
         function,
     );
 }
