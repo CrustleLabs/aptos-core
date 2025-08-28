@@ -14,8 +14,7 @@ use futures::future::join_all;
 use log::{debug, info, warn};
 use rand::{rngs::StdRng, seq::SliceRandom, thread_rng, Rng, SeedableRng};
 use std::{
-    sync::atomic::AtomicUsize,
-    time::{Duration, Instant},
+    collections::HashMap, sync::atomic::AtomicUsize, time::{Duration, Instant}
 };
 
 // Reliable/retrying transaction executor, used for initializing
@@ -297,8 +296,33 @@ fn is_account_not_found(error: &RestError) -> bool {
 }
 
 #[async_trait]
-impl ReliableTransactionSubmitter for RestApiReliableTransactionSubmitter {
-    async fn get_account_balance(&self, account_address: AccountAddress) -> Result<u64> {
+pub trait ReliableTransactionSubmitterMultithreaded: Send + Sync {
+    async fn get_account_balance_multithreaded(&self, account_address: AccountAddress) -> Result<u64>;
+
+    async fn query_sequence_number_multithreaded(&self, account_address: AccountAddress) -> Result<u64>;
+
+    async fn execute_transactions_multithreaded(&self, txns: &[SignedTransaction]) -> Result<()> {
+        self.execute_transactions_with_counter_multithreaded(txns, &CounterState {
+            submit_failures: vec![AtomicUsize::new(0)],
+            wait_failures: vec![AtomicUsize::new(0)],
+            successes: AtomicUsize::new(0),
+            by_client: HashMap::new(),
+        })
+        .await
+    }
+
+    async fn execute_transactions_with_counter_multithreaded(
+        &self,
+        txns: &[SignedTransaction],
+        state: &CounterState,
+    ) -> Result<()>;
+
+    fn create_counter_state_multithreaded(&self) -> CounterState;
+}
+
+#[async_trait]
+impl ReliableTransactionSubmitterMultithreaded for RestApiReliableTransactionSubmitter {
+    async fn get_account_balance_multithreaded(&self, account_address: AccountAddress) -> Result<u64> {
         Ok(FETCH_ACCOUNT_RETRY_POLICY
             .retry_if(
                 move || {
@@ -318,11 +342,11 @@ impl ReliableTransactionSubmitter for RestApiReliableTransactionSubmitter {
             .into_inner())
     }
 
-    async fn query_sequence_number(&self, account_address: AccountAddress) -> Result<u64> {
+    async fn query_sequence_number_multithreaded(&self, account_address: AccountAddress) -> Result<u64> {
         query_sequence_number_with_client(self.random_rest_client(), account_address).await
     }
 
-    async fn execute_transactions_with_counter(
+    async fn execute_transactions_with_counter_multithreaded(
         &self,
         txns: &[SignedTransaction],
         counters: &CounterState,
@@ -347,7 +371,7 @@ impl ReliableTransactionSubmitter for RestApiReliableTransactionSubmitter {
         Ok(())
     }
 
-    fn create_counter_state(&self) -> CounterState {
+    fn create_counter_state_multithreaded(&self) -> CounterState {
         CounterState {
             submit_failures: std::iter::repeat_with(|| AtomicUsize::new(0))
                 .take(self.max_retries)
@@ -371,5 +395,28 @@ impl ReliableTransactionSubmitter for RestApiReliableTransactionSubmitter {
                 })
                 .collect(),
         }
+    }
+}
+
+#[async_trait(?Send)]
+impl ReliableTransactionSubmitter for RestApiReliableTransactionSubmitter {
+     async fn get_account_balance(&self, account_address: AccountAddress) -> Result<u64> {
+        self.get_account_balance_multithreaded(account_address).await
+    }
+
+    async fn query_sequence_number(&self, account_address: AccountAddress) -> Result<u64> {
+        self.query_sequence_number_multithreaded(account_address).await
+    }
+
+    async fn execute_transactions_with_counter(
+        &self,
+        txns: &[SignedTransaction],
+        counters: &CounterState,
+    ) -> Result<()> {
+        self.execute_transactions_with_counter_multithreaded(txns, counters).await
+    }
+
+    fn create_counter_state(&self) -> CounterState {
+        self.create_counter_state_multithreaded()
     }
 }

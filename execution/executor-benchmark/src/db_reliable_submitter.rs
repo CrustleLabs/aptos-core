@@ -26,7 +26,7 @@ pub struct DbReliableTransactionSubmitter {
     pub block_sender: mpsc::SyncSender<Vec<Transaction>>,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl ReliableTransactionSubmitter for DbReliableTransactionSubmitter {
     async fn get_account_balance(&self, account_address: AccountAddress) -> Result<u64> {
         let db_state_view = self.db.reader.latest_state_checkpoint_view().unwrap();

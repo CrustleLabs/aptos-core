@@ -5,7 +5,6 @@ use aptos_crypto::ed25519::Ed25519PrivateKey;
 use aptos_sdk::types::{
     AccountKey, EphemeralKeyPair, EphemeralPrivateKey, KeylessAccount, LocalAccount,
 };
-use aptos_transaction_generator_lib::ReliableTransactionSubmitter;
 use aptos_types::{
     keyless,
     keyless::{Claims, OpenIdSig, Pepper, ZeroKnowledgeSig},
@@ -18,13 +17,15 @@ use std::{
     io::{self, BufRead},
 };
 
+use crate::emitter::transaction_executor::ReliableTransactionSubmitterMultithreaded;
+
 const QUERY_PARALLELISM: usize = 300;
 
 #[async_trait]
 pub trait LocalAccountGenerator: Send + Sync {
     async fn gen_local_accounts(
         &self,
-        txn_executor: &dyn ReliableTransactionSubmitter,
+        txn_executor: &dyn ReliableTransactionSubmitterMultithreaded,
         num_accounts: usize,
         rng: &mut StdRng,
     ) -> anyhow::Result<Vec<LocalAccount>>;
@@ -65,7 +66,7 @@ pub struct PrivateKeyAccountGenerator;
 impl LocalAccountGenerator for PrivateKeyAccountGenerator {
     async fn gen_local_accounts(
         &self,
-        txn_executor: &dyn ReliableTransactionSubmitter,
+        txn_executor: &dyn ReliableTransactionSubmitterMultithreaded,
         num_accounts: usize,
         rng: &mut StdRng,
     ) -> anyhow::Result<Vec<LocalAccount>> {
@@ -80,7 +81,7 @@ impl LocalAccountGenerator for PrivateKeyAccountGenerator {
         }
         let result_futures = addresses
             .iter()
-            .map(|address| txn_executor.query_sequence_number(*address))
+            .map(|address| txn_executor.query_sequence_number_multithreaded(*address))
             .collect::<Vec<_>>();
 
         let seq_nums = futures::stream::iter(result_futures)
@@ -123,7 +124,7 @@ pub struct KeylessAccountGenerator {
 impl LocalAccountGenerator for KeylessAccountGenerator {
     async fn gen_local_accounts(
         &self,
-        txn_executor: &dyn ReliableTransactionSubmitter,
+        txn_executor: &dyn ReliableTransactionSubmitterMultithreaded,
         num_accounts: usize,
         _rng: &mut StdRng,
     ) -> anyhow::Result<Vec<LocalAccount>> {
@@ -185,7 +186,7 @@ impl LocalAccountGenerator for KeylessAccountGenerator {
 
         let result_futures = addresses
             .iter()
-            .map(|address| txn_executor.query_sequence_number(*address))
+            .map(|address| txn_executor.query_sequence_number_multithreaded(*address))
             .collect::<Vec<_>>();
 
         let seq_nums = futures::stream::iter(result_futures)

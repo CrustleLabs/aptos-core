@@ -1,37 +1,25 @@
 // Copyright © Aptos Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{
-    tests::{
-        common::test_dir_path,
-        token_objects::{
-            create_mint_hero_payload, create_set_hero_description_payload,
-            publish_object_token_example,
-        },
-    },
-    MoveHarness,
-};
-use aptos_cached_packages::{aptos_stdlib, aptos_token_sdk_builder};
-use aptos_crypto::{bls12381, PrivateKey, Uniform};
-use aptos_gas_algebra::GasQuantity;
-use aptos_gas_profiling::TransactionGasLog;
-use aptos_language_e2e_tests::account::Account;
-use aptos_transaction_generator_lib::{
-    entry_point_trait::{EntryPointTrait, MultiSigConfig},
-    publishing::publish_util::PackageHandler,
-};
-use aptos_transaction_workloads_lib::{EntryPoints, LoopType};
-use aptos_types::{
-    account_address::{default_stake_pool_address, AccountAddress},
-    account_config::CORE_CODE_ADDRESS,
-    chain_id::ChainId,
-    fee_statement::FeeStatement,
-    transaction::{EntryFunction, TransactionPayload},
-};
-use move_core_types::{identifier::Identifier, language_storage::ModuleId, value::MoveValue};
-use rand::{rngs::StdRng, SeedableRng};
+use crate::MoveHarness;
+use aptos_types::account_config::CORE_CODE_ADDRESS;
+use move_core_types::value::MoveValue;
 use sha3::{Digest, Sha3_512};
-use std::path::Path;
+
+fn dollar_cost(gas_units: u64, price: u64) -> f64 {
+    ((gas_units * 100/* gas unit price */) as f64) / 100_000_000_f64 * (price as f64)
+}
+
+pub fn print_gas_cost(function: &str, gas_units: u64) {
+    println!(
+        "{:8} | {:.6} | {:.6} | {:.6} | {}",
+        gas_units,
+        dollar_cost(gas_units, 5),
+        dollar_cost(gas_units, 15),
+        dollar_cost(gas_units, 30),
+        function,
+    );
+}
 
 #[test]
 fn test_modify_gas_schedule_check_hash() {

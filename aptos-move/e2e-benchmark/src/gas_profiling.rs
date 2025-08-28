@@ -8,8 +8,10 @@ use aptos_transaction_generator_lib::{
     call_custom_modules::CustomModulesDelegationGeneratorCreator, entry_point_trait::EntryPointTrait, entry_points::EntryPointTransactionGenerator, workflow_delegator::{WorkflowKind, WorkflowTxnGeneratorCreator}, AlwaysApproveRootAccountHandle, CounterState, ReliableTransactionSubmitter, TransactionGenerator, TransactionGeneratorCreator, WorkflowProgress
 };
 use aptos_sdk::{transaction_builder::TransactionFactory, types::{AccountKey, LocalAccount}};
+#[cfg(test)]
+use aptos_types::transaction::TransactionPayload;
 use aptos_types::{
-    account_address::AccountAddress, fee_statement::FeeStatement, transaction::{SignedTransaction, TransactionExecutableRef, TransactionPayload}
+    account_address::AccountAddress, fee_statement::FeeStatement, transaction::{SignedTransaction, TransactionExecutableRef}
 };
 use aptos_types::chain_id::ChainId;
 use std::{collections::HashMap, path::Path, sync::{atomic::AtomicUsize, Arc, Mutex}};
@@ -89,6 +91,7 @@ impl CalibrationRunner {
         }
     }
 
+    #[cfg(test)]
     fn run(&mut self, function: &str, account: &Account, payload: TransactionPayload) {
         if !self.profile_gas {
             print_gas_cost(function, self.harness.evaluate_gas(account, payload));
@@ -100,6 +103,7 @@ impl CalibrationRunner {
         }
     }
 
+    #[cfg(test)]
     fn run_with_tps_estimate(
         &mut self,
         function: &str,
@@ -145,6 +149,7 @@ impl CalibrationRunner {
         }
     }
 
+    #[cfg(test)]
     fn publish(&mut self, name: &str, account: &Account, path: &Path) {
         if !self.profile_gas {
             print_gas_cost(name, self.harness.evaluate_publish_gas(account, path));
@@ -322,6 +327,7 @@ pub fn print_gas_cost(function: &str, gas_units: u64) {
     );
 }
 
+#[cfg(test)]
 fn print_gas_cost_with_statement(
     function: &str,
     gas_units: u64,
@@ -387,7 +393,7 @@ fn print_gas_cost_with_statement_and_tps(
 
 #[cfg(test)]
 mod tests{
-    use std::{path::PathBuf, sync::Arc};
+    use std::path::PathBuf;
     use aptos_cached_packages::{aptos_stdlib, aptos_token_sdk_builder};
     use aptos_crypto::{bls12381, PrivateKey, Uniform};
     use aptos_sdk::move_types::{identifier::Identifier, language_storage::ModuleId};
@@ -437,10 +443,7 @@ mod tests{
             Err(_) => true,
         };
 
-        let mut runner = CalibrationRunner {
-            harness,
-            profile_gas,
-        };
+        let mut runner = CalibrationRunner::new(harness, profile_gas);
 
         set_paranoid_type_checks(true);
 
@@ -841,10 +844,7 @@ mod tests{
             }))
         ];
 
-        let mut runner = CalibrationRunner {
-            harness,
-            profile_gas,
-        };
+        let mut runner = CalibrationRunner::new(harness, profile_gas);
 
         for (large_db_tps, small_db_tps, entry_point) in entry_points {
             let tps = if use_large_db_numbers {
@@ -862,7 +862,7 @@ mod tests{
             } else {
                 small_db_tps
             };
-            let name = format!("workflow_{workflow_kind:?}");
+            let name = format!("workflow_{workflow:?}");
             runner.run_workload(CalibrationWorkload::Workflow(workflow), name, 0,3, tps).await;
         }
 
@@ -895,41 +895,41 @@ mod tests{
         );
     }
 
-    const SHORT_STR: &str = "A hero.";
-    const LONG_STR: &str = "\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-        ";
+//     const SHORT_STR: &str = "A hero.";
+//     const LONG_STR: &str = "\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+//         ";
 
 
 
