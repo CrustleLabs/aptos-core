@@ -5,7 +5,7 @@ use super::{
     local_account_generator::LocalAccountGenerator, parse_seed,
     transaction_executor::RestApiReliableTransactionSubmitter,
 };
-use crate::{emitter::{create_private_key_account_generator, transaction_executor::ReliableTransactionSubmitterMultithreaded}, EmitJobRequest};
+use crate::{emitter::create_private_key_account_generator, EmitJobRequest};
 use anyhow::{anyhow, bail, format_err, Context, Result};
 use aptos_config::config::DEFAULT_MAX_SUBMIT_TRANSACTION_BATCH_SIZE;
 use aptos_crypto::{ed25519::Ed25519PrivateKey, encoding_type::EncodingType};
@@ -29,7 +29,7 @@ use std::{
 
 pub struct SourceAccountManager<'t> {
     pub source_account: Arc<LocalAccount>,
-    pub txn_executor: &'t dyn ReliableTransactionSubmitterMultithreaded,
+    pub txn_executor: &'t dyn ReliableTransactionSubmitter,
     pub mint_to_root: bool,
     pub prompt_before_spending: bool,
     pub txn_factory: TransactionFactory,
@@ -55,7 +55,7 @@ impl SourceAccountManager<'_> {
     async fn check_approve_funds(&self, amount: u64, reason: &str) -> Result<bool> {
         let balance = self
             .txn_executor
-            .get_account_balance_multithreaded(self.source_account_address())
+            .get_account_balance(self.source_account_address())
             .await?;
         Ok(if self.mint_to_root {
             // We have a root account, so amount of funds minted is not a problem
@@ -122,7 +122,7 @@ impl SourceAccountManager<'_> {
 
     pub async fn mint_to_root(
         &self,
-        txn_executor: &dyn ReliableTransactionSubmitterMultithreaded,
+        txn_executor: &dyn ReliableTransactionSubmitter,
         amount: u64,
     ) -> Result<()> {
         info!("Minting new coins to root");
@@ -133,12 +133,12 @@ impl SourceAccountManager<'_> {
                 aptos_stdlib::aptos_coin_mint(self.source_account_address(), amount),
             ));
 
-        if let Err(e) = txn_executor.execute_transactions_multithreaded(&[txn]).await {
+        if let Err(e) = txn_executor.execute_transactions(&[txn]).await {
             // This cannot work simultaneously across different txn emitters,
             // so check on failure if another emitter has refilled it instead
 
             let balance = txn_executor
-                .get_account_balance_multithreaded(self.source_account_address())
+                .get_account_balance(self.source_account_address())
                 .await?;
             if balance > u64::MAX / 2 {
                 Ok(())

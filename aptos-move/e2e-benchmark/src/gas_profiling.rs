@@ -4,19 +4,32 @@
 use aptos_gas_algebra::GasQuantity;
 use aptos_gas_profiling::TransactionGasLog;
 use aptos_language_e2e_tests::account::Account;
-use aptos_transaction_generator_lib::{
-    call_custom_modules::CustomModulesDelegationGeneratorCreator, entry_point_trait::EntryPointTrait, entry_points::EntryPointTransactionGenerator, workflow_delegator::{WorkflowKind, WorkflowTxnGeneratorCreator}, AlwaysApproveRootAccountHandle, CounterState, ReliableTransactionSubmitter, TransactionGenerator, TransactionGeneratorCreator, WorkflowProgress
+use aptos_sdk::{
+    transaction_builder::TransactionFactory,
+    types::{AccountKey, LocalAccount},
 };
-use aptos_sdk::{transaction_builder::TransactionFactory, types::{AccountKey, LocalAccount}};
+use aptos_transaction_generator_lib::{
+    call_custom_modules::CustomModulesDelegationGeneratorCreator,
+    entry_point_trait::EntryPointTrait,
+    entry_points::EntryPointTransactionGenerator,
+    workflow_delegator::{WorkflowKind, WorkflowTxnGeneratorCreator},
+    AlwaysApproveRootAccountHandle, CounterState, ReliableTransactionSubmitter,
+    TransactionGenerator, TransactionGeneratorCreator, WorkflowProgress,
+};
 #[cfg(test)]
 use aptos_types::transaction::TransactionPayload;
 use aptos_types::{
-    account_address::AccountAddress, fee_statement::FeeStatement, transaction::{SignedTransaction, TransactionExecutableRef}
+    account_address::AccountAddress,
+    chain_id::ChainId,
+    fee_statement::FeeStatement,
+    transaction::{SignedTransaction, TransactionExecutableRef},
 };
-use aptos_types::chain_id::ChainId;
-use std::{collections::HashMap, path::Path, sync::{atomic::AtomicUsize, Arc, Mutex}};
 use e2e_move_tests::MoveHarness;
-
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{atomic::AtomicUsize, Arc, Mutex},
+};
 
 #[derive(Clone, Debug)]
 pub enum CalibrationWorkload {
@@ -25,10 +38,18 @@ pub enum CalibrationWorkload {
 }
 
 impl CalibrationWorkload {
-    pub async fn initialize(self, harness: &mut MoveHarness, cur_phase: Arc<AtomicUsize>) -> Box<dyn TransactionGenerator> {
+    pub async fn initialize(
+        self,
+        harness: &mut MoveHarness,
+        cur_phase: Arc<AtomicUsize>,
+    ) -> Box<dyn TransactionGenerator> {
         match self {
-            CalibrationWorkload::EntryPoint(entry_point) => initialize_entry_point_workload(entry_point, harness).await,
-            CalibrationWorkload::Workflow(workflow_kind) => initialize_workflow_workload(workflow_kind, cur_phase, harness).await,
+            CalibrationWorkload::EntryPoint(entry_point) => {
+                initialize_entry_point_workload(entry_point, harness).await
+            },
+            CalibrationWorkload::Workflow(workflow_kind) => {
+                initialize_workflow_workload(workflow_kind, cur_phase, harness).await
+            },
         }
     }
 }
@@ -46,9 +67,18 @@ impl CalibrationRunner {
         }
     }
 
-    pub async fn run_workload(&mut self, workload: CalibrationWorkload, name: String, to_skip: usize, to_evaluate: usize, tps: f64) {
+    pub async fn run_workload(
+        &mut self,
+        workload: CalibrationWorkload,
+        name: String,
+        to_skip: usize,
+        to_evaluate: usize,
+        tps: f64,
+    ) {
         let cur_phase = Arc::new(AtomicUsize::new(0));
-        let mut creator = workload.initialize(&mut self.harness, cur_phase.clone()).await;
+        let mut creator = workload
+            .initialize(&mut self.harness, cur_phase.clone())
+            .await;
 
         let user = into_local_account(self.harness.new_account_with_key_pair());
 
@@ -64,7 +94,7 @@ impl CalibrationRunner {
                     }
                 } else {
                     assert_eq!(txns.len(), 1);
-                    return txns.into_iter().next().unwrap()
+                    return txns.into_iter().next().unwrap();
                 }
             }
         };
@@ -75,7 +105,9 @@ impl CalibrationRunner {
         for i in 0..to_evaluate {
             let txn = generate_next();
             let cur_name = if to_evaluate > 1 {
-                if let TransactionExecutableRef::EntryFunction(entry_fun) = txn.payload().executable_ref().unwrap() {
+                if let TransactionExecutableRef::EntryFunction(entry_fun) =
+                    txn.payload().executable_ref().unwrap()
+                {
                     format!("{}_{}_{}", name, i, entry_fun.function().as_str())
                 } else {
                     format!("{}_{}", name, i)
@@ -83,11 +115,7 @@ impl CalibrationRunner {
             } else {
                 name.clone()
             };
-            self.run_with_tps_estimate_signed(
-                &cur_name,
-                txn,
-                tps,
-            );
+            self.run_with_tps_estimate_signed(&cur_name, txn, tps);
         }
     }
 
@@ -164,18 +192,30 @@ impl CalibrationRunner {
 }
 
 fn into_local_account(account: Account) -> LocalAccount {
-    LocalAccount::new(*account.address(), AccountKey::from_private_key(account.privkey), 0)
+    LocalAccount::new(
+        *account.address(),
+        AccountKey::from_private_key(account.privkey),
+        0,
+    )
+}
+
+fn create_transaction_factory() -> TransactionFactory {
+    TransactionFactory::new(ChainId::test())
+        .with_absolute_transaction_expiration_timestamp(30)
+        .with_gas_unit_price(100)
+        .with_max_gas_amount(2_000_000)
 }
 
 async fn initialize_entry_point_workload(
     entry_point: Box<dyn EntryPointTrait>,
     harness: &mut MoveHarness,
 ) -> Box<dyn TransactionGenerator> {
-    let txn_factory = TransactionFactory::new(ChainId::test());
-    let source_account = AlwaysApproveRootAccountHandle{ root_account: Arc::new(into_local_account(harness.new_account_with_key_pair()))};
+    let txn_factory = create_transaction_factory();
+    let source_account = AlwaysApproveRootAccountHandle {
+        root_account: Arc::new(into_local_account(harness.store_and_fund_account(&Account::new(), u64::MAX/4, 0)))
+    };
     let txn_executor = HarnessReliableTransactionSubmitter::new(harness);
     let num_modules = 1;
-
 
     let generator = CustomModulesDelegationGeneratorCreator::new(
         txn_factory.clone(),
@@ -197,8 +237,10 @@ async fn initialize_workflow_workload(
     cur_phase: Arc<AtomicUsize>,
     harness: &mut MoveHarness,
 ) -> Box<dyn TransactionGenerator> {
-    let txn_factory = TransactionFactory::new(ChainId::test());
-    let source_account = AlwaysApproveRootAccountHandle{ root_account: Arc::new(into_local_account(harness.new_account_with_key_pair()))};
+    let txn_factory = create_transaction_factory();
+    let source_account = AlwaysApproveRootAccountHandle {
+        root_account: Arc::new(into_local_account(harness.store_and_fund_account(&Account::new(), u64::MAX/4, 0)))
+    };
     let txn_executor = HarnessReliableTransactionSubmitter::new(harness);
     let num_modules = 1;
 
@@ -218,11 +260,11 @@ async fn initialize_workflow_workload(
 }
 
 fn execute_block_expect_success(txns: Vec<SignedTransaction>, harness: &mut MoveHarness) {
-    let outputs = harness.run_block(txns);
+    let outputs = harness.run_block(txns.clone());
 
-    for output in outputs {
-        assert!(output.is_kept(), "{:?}", output);
-        assert!(output.status().unwrap().is_success(), "{:?}", output);
+    for (idx, (status, txn)) in outputs.into_iter().zip(txns.into_iter()).enumerate() {
+        assert!(status.is_kept(), "[{idx}] status {:?} for txn {:.2000?}", status, txn);
+        assert!(status.status().unwrap().is_success(), "[{idx}] status {:?} for txn {:.2000?}", status, txn);
     }
 }
 
@@ -233,7 +275,7 @@ pub struct HarnessReliableTransactionSubmitter<'a> {
 impl<'a> HarnessReliableTransactionSubmitter<'a> {
     pub fn new(harness: &'a mut MoveHarness) -> Self {
         Self {
-            harness: Mutex::new(harness)
+            harness: Mutex::new(harness),
         }
     }
 
@@ -242,14 +284,23 @@ impl<'a> HarnessReliableTransactionSubmitter<'a> {
     // }
 }
 
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl<'a> ReliableTransactionSubmitter for HarnessReliableTransactionSubmitter<'a> {
     async fn get_account_balance(&self, account_address: AccountAddress) -> anyhow::Result<u64> {
-        Ok(self.harness.lock().unwrap().read_aptos_balance(&account_address))
+        Ok(self
+            .harness
+            .lock()
+            .unwrap()
+            .read_aptos_balance(&account_address))
     }
 
     async fn query_sequence_number(&self, address: AccountAddress) -> anyhow::Result<u64> {
-        Ok(self.harness.lock().unwrap().sequence_number_opt(&address).unwrap_or(0))
+        Ok(self
+            .harness
+            .lock()
+            .unwrap()
+            .sequence_number_opt(&address)
+            .unwrap_or(0))
     }
 
     async fn execute_transactions_with_counter(
@@ -392,22 +443,27 @@ fn print_gas_cost_with_statement_and_tps(
 }
 
 #[cfg(test)]
-mod tests{
-    use std::path::PathBuf;
+mod tests {
+    use crate::gas_profiling::{
+        print_gas_cost_with_statement_and_tps_header, CalibrationRunner, CalibrationWorkload,
+    };
     use aptos_cached_packages::{aptos_stdlib, aptos_token_sdk_builder};
     use aptos_crypto::{bls12381, PrivateKey, Uniform};
     use aptos_sdk::move_types::{identifier::Identifier, language_storage::ModuleId};
+    use aptos_transaction_generator_lib::{
+        entry_point_trait::EntryPointTrait, publishing::publish_util::PackageHandler,
+        workflow_delegator::WorkflowKind,
+    };
     use aptos_transaction_workloads_lib::{EntryPoints, LoopType, TokenWorkflowKind};
     use aptos_types::{
-        account_address::{default_stake_pool_address, AccountAddress}, chain_id::ChainId, transaction::{EntryFunction, TransactionPayload}
+        account_address::{default_stake_pool_address, AccountAddress},
+        chain_id::ChainId,
+        transaction::{EntryFunction, TransactionPayload},
     };
     use aptos_vm_environment::prod_configs::set_paranoid_type_checks;
     use e2e_move_tests::MoveHarness;
-    use aptos_transaction_generator_lib::{entry_point_trait::EntryPointTrait, publishing::publish_util::PackageHandler, workflow_delegator::WorkflowKind};
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
-    use crate::gas_profiling::{print_gas_cost_with_statement_and_tps_header, CalibrationRunner, CalibrationWorkload};
-
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::path::PathBuf;
 
     pub fn test_dir_path(s: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -418,7 +474,6 @@ mod tests{
             .join("tests")
             .join(s)
     }
-
 
     /// Run with `cargo test test_gas -- --nocapture` to see output.
     #[test]
@@ -764,7 +819,6 @@ mod tests{
             Err(_) => true,
         };
 
-
         set_paranoid_type_checks(true);
 
         print_gas_cost_with_statement_and_tps_header();
@@ -837,12 +891,14 @@ mod tests{
             }),
         ];
 
-        let workflows: Vec<(f64, f64, Box<dyn WorkflowKind>)> = vec![
-            (1.0, 1.0, Box::new(TokenWorkflowKind::CreateMintBurn {
+        let workflows: Vec<(f64, f64, Box<dyn WorkflowKind>)> = vec![(
+            1.0,
+            1.0,
+            Box::new(TokenWorkflowKind::CreateMintBurn {
                 count: 1,
                 creation_balance: 200000,
-            }))
-        ];
+            }),
+        )];
 
         let mut runner = CalibrationRunner::new(harness, profile_gas);
 
@@ -853,7 +909,15 @@ mod tests{
                 small_db_tps
             };
             let name = format!("entry_point_{entry_point:?}");
-            runner.run_workload(CalibrationWorkload::EntryPoint(Box::new(entry_point)), name, 0,1, tps).await;
+            runner
+                .run_workload(
+                    CalibrationWorkload::EntryPoint(Box::new(entry_point)),
+                    name,
+                    0,
+                    1,
+                    tps,
+                )
+                .await;
         }
 
         for (large_db_tps, small_db_tps, workflow) in workflows {
@@ -863,7 +927,9 @@ mod tests{
                 small_db_tps
             };
             let name = format!("workflow_{workflow:?}");
-            runner.run_workload(CalibrationWorkload::Workflow(workflow), name, 0,3, tps).await;
+            runner
+                .run_workload(CalibrationWorkload::Workflow(workflow), name, 0, 3, tps)
+                .await;
         }
 
         runner.run_with_tps_estimate(
@@ -882,7 +948,8 @@ mod tests{
             if use_large_db_numbers { 1583.0 } else { 2215. },
         );
 
-        let mut package_handler = PackageHandler::new(EntryPoints::Nop.pre_built_packages(), "simple");
+        let mut package_handler =
+            PackageHandler::new(EntryPoints::Nop.pre_built_packages(), "simple");
         let mut rng = StdRng::seed_from_u64(14);
         let package = package_handler.pick_package(&mut rng, *account_1.address());
         let payloads = package.publish_transaction_payload(&ChainId::test());
@@ -895,42 +962,39 @@ mod tests{
         );
     }
 
-//     const SHORT_STR: &str = "A hero.";
-//     const LONG_STR: &str = "\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
-//         ";
-
-
-
+    //     const SHORT_STR: &str = "A hero.";
+    //     const LONG_STR: &str = "\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\
+    //         ";
 }

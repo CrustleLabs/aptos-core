@@ -26,7 +26,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 pub trait WorkflowKind: std::fmt::Debug + Sync + Send + CloneWorkflowKind {
     async fn construct_workflow(
         &self,

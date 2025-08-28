@@ -20,7 +20,7 @@ pub enum TokenWorkflowKind {
     CreateMintBurn { count: usize, creation_balance: u64 },
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl WorkflowKind for TokenWorkflowKind {
     async fn construct_workflow(
         &self,

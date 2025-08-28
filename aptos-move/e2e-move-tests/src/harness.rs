@@ -86,6 +86,8 @@ pub struct MoveHarness {
     pub max_gas_per_txn: u64,
 }
 
+unsafe impl Send for MoveHarness {}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum BlockSplit {
     Whole,
