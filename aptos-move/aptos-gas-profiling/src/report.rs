@@ -175,7 +175,13 @@ impl TransactionGasLog {
         );
         data.insert(
             "methods_self".to_string(),
-            Value::Array(aggregated.methods_self.into_iter().map(convert_op).collect()),
+            Value::Array(
+                aggregated
+                    .methods_self
+                    .into_iter()
+                    .map(convert_op)
+                    .collect(),
+            ),
         );
         data.insert(
             "reads".to_string(),

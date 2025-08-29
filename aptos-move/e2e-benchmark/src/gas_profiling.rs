@@ -102,6 +102,7 @@ impl CalibrationRunner {
 
         execute_block_expect_success(to_skip_txns, &mut self.harness);
 
+        let mut aggregate_gas_log: Option<TransactionGasLog> = None;
         for i in 0..to_evaluate {
             let txn = generate_next();
             let cur_name = if to_evaluate > 1 {
@@ -115,7 +116,24 @@ impl CalibrationRunner {
             } else {
                 name.clone()
             };
-            self.run_with_tps_estimate_signed(&cur_name, txn, tps);
+            let log = self.run_with_tps_estimate_signed(&cur_name, txn, tps);
+            if let Some(mut log) = log {
+                log.exec_io.call_graph = log.exec_io.call_graph.fold();
+                aggregate_gas_log = Some(
+                    if let Some(aggregate_gas_log) = aggregate_gas_log {
+                        aggregate_gas_log.combine(&log)
+                    } else {
+                        log
+                    },
+                );
+            }
+        }
+
+        if to_evaluate > 1 {
+            if let Some(mut aggregate_gas_log) = aggregate_gas_log {
+                aggregate_gas_log.exec_io.call_graph = aggregate_gas_log.exec_io.call_graph.fold();
+                save_profiling_results(&format!("{}_aggregated", name), &aggregate_gas_log);
+            }
         }
     }
 
@@ -149,7 +167,7 @@ impl CalibrationRunner {
                 function,
                 gas_used,
                 fee_statement,
-                summarize_exe_and_io(log),
+                summarize_exe_and_io(&log),
                 tps,
             );
         }
@@ -160,9 +178,10 @@ impl CalibrationRunner {
         function: &str,
         txn: SignedTransaction,
         tps: f64,
-    ) {
+    ) -> Option<TransactionGasLog> {
         if !self.profile_gas {
             print_gas_cost(function, self.harness.evaluate_gas_signed(txn));
+            None
         } else {
             let (log, gas_used, fee_statement) =
                 self.harness.evaluate_gas_with_profiler_signed(txn);
@@ -171,9 +190,10 @@ impl CalibrationRunner {
                 function,
                 gas_used,
                 fee_statement,
-                summarize_exe_and_io(log),
+                summarize_exe_and_io(&log),
                 tps,
             );
+            Some(log)
         }
     }
 
@@ -212,7 +232,11 @@ async fn initialize_entry_point_workload(
 ) -> Box<dyn TransactionGenerator> {
     let txn_factory = create_transaction_factory();
     let source_account = AlwaysApproveRootAccountHandle {
-        root_account: Arc::new(into_local_account(harness.store_and_fund_account(&Account::new(), u64::MAX/4, 0)))
+        root_account: Arc::new(into_local_account(harness.store_and_fund_account(
+            &Account::new(),
+            u64::MAX / 4,
+            0,
+        ))),
     };
     let txn_executor = HarnessReliableTransactionSubmitter::new(harness);
     let num_modules = 1;
@@ -239,7 +263,11 @@ async fn initialize_workflow_workload(
 ) -> Box<dyn TransactionGenerator> {
     let txn_factory = create_transaction_factory();
     let source_account = AlwaysApproveRootAccountHandle {
-        root_account: Arc::new(into_local_account(harness.store_and_fund_account(&Account::new(), u64::MAX/4, 0)))
+        root_account: Arc::new(into_local_account(harness.store_and_fund_account(
+            &Account::new(),
+            u64::MAX / 4,
+            0,
+        ))),
     };
     let txn_executor = HarnessReliableTransactionSubmitter::new(harness);
     let num_modules = 1;
@@ -263,8 +291,18 @@ fn execute_block_expect_success(txns: Vec<SignedTransaction>, harness: &mut Move
     let outputs = harness.run_block(txns.clone());
 
     for (idx, (status, txn)) in outputs.into_iter().zip(txns.into_iter()).enumerate() {
-        assert!(status.is_kept(), "[{idx}] status {:?} for txn {:.2000?}", status, txn);
-        assert!(status.status().unwrap().is_success(), "[{idx}] status {:?} for txn {:.2000?}", status, txn);
+        assert!(
+            status.is_kept(),
+            "[{idx}] status {:?} for txn {:.2000?}",
+            status,
+            txn
+        );
+        assert!(
+            status.status().unwrap().is_success(),
+            "[{idx}] status {:?} for txn {:.2000?}",
+            status,
+            txn
+        );
     }
 }
 
@@ -335,7 +373,7 @@ pub struct SummaryExeAndIO {
     pub write_cost: f64,
 }
 
-fn summarize_exe_and_io(log: TransactionGasLog) -> SummaryExeAndIO {
+fn summarize_exe_and_io(log: &TransactionGasLog) -> SummaryExeAndIO {
     fn cast<T>(gas: GasQuantity<T>) -> f64 {
         u64::from(gas) as f64
     }
@@ -423,7 +461,9 @@ fn print_gas_cost_with_statement_and_tps(
     summary: SummaryExeAndIO,
     tps: f64,
 ) {
-    let exe_and_io_gas = fee_statement.map_or(0, |fee_statement| fee_statement.execution_gas_used() + fee_statement.io_gas_used());
+    let exe_and_io_gas = fee_statement.map_or(0, |fee_statement| {
+        fee_statement.execution_gas_used() + fee_statement.io_gas_used()
+    });
     println!(
         "{:9} | {:9.6} | {:9.6} | {:9.6} | {:8} | {:8.2} | {:8.2} | {:8.2} | {:8.2} | {:8.0} | {}",
         gas_units,

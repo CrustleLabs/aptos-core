@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    erased::Node, log::{ExecutionAndIOCosts, ExecutionGasEvent}, render::{Render, TableKey}
+    erased::Node,
+    log::{ExecutionAndIOCosts, ExecutionGasEvent},
+    render::{Render, TableKey},
 };
 use aptos_gas_algebra::{GasQuantity, GasScalingFactor, InternalGas, InternalGasUnit};
 use std::collections::{btree_map, BTreeMap};
@@ -150,7 +152,7 @@ impl ExecutionAndIOCosts {
 
 fn compute_method_recursive_cost(
     node: &Node<GasQuantity<InternalGasUnit>>,
-    methods: &mut BTreeMap<String, (usize, GasQuantity<InternalGasUnit>)>
+    methods: &mut BTreeMap<String, (usize, GasQuantity<InternalGasUnit>)>,
 ) -> GasQuantity<InternalGasUnit> {
     let mut sum = node.val;
     for child in &node.children {
@@ -165,7 +167,7 @@ fn compute_method_recursive_cost(
 
 fn compute_method_self_cost(
     node: &Node<GasQuantity<InternalGasUnit>>,
-    methods: &mut BTreeMap<String, (usize, GasQuantity<InternalGasUnit>)>
+    methods: &mut BTreeMap<String, (usize, GasQuantity<InternalGasUnit>)>,
 ) {
     let mut sum = node.val;
     for child in &node.children {
