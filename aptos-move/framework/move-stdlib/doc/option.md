@@ -67,8 +67,7 @@ This module defines the Option type and its methods to represent and handle an o
 
 ## Enum `Option`
 
-Abstraction of a value that may or may not be present. Implemented with a vector of size
-zero or one because Move bytecode does not have ADTs.
+Abstraction of a value that may or may not be present. Implemented with Enum.
 
 
 <pre><code>enum <a href="option.md#0x1_option_Option">Option</a>&lt;Element&gt; <b>has</b> <b>copy</b>, drop, store

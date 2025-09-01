@@ -309,14 +309,6 @@ fn create_vector_value(vv: Vec<Value>) -> Value {
     Value::vector_for_testing_only(vv)
 }
 
-// fn create_singleton_vector(v: Value) -> Value {
-//     create_vector_value(vec![v])
-// }
-
-// fn create_empty_vector() -> Value {
-//     create_vector_value(vec![])
-// }
-
 fn num_bytes_from_entry_function_payload(entry_function_payload: &EntryFunctionPayload) -> usize {
     entry_function_payload.account_address.len()
         + entry_function_payload.module_name.len()

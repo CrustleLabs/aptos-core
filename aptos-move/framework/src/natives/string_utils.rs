@@ -346,30 +346,6 @@ fn native_format_impl(
             )?;
             out.push('}');
         },
-        // MoveTypeLayout::Struct(MoveStructLayout::WithTypesAndVariants { type_, variants }) => {
-        //     let strct = val.value_as::<Struct>()?;
-        //     if type_.name.as_str() == "Option"
-        //         && type_.module.as_str() == "option"
-        //         && type_.address == AccountAddress::ONE
-        //     {
-        //         println!("strct: {:?}", strct);
-        //         return Ok(());
-        //     }
-        //     if context.type_tag {
-        //         write!(out, "{} {{", type_.to_canonical_string()).unwrap();
-        //     } else {
-        //         write!(out, "{} {{", type_.name.as_str()).unwrap();
-        //     };
-        //     format_vector(
-        //         context,
-        //         variants.iter(),
-        //         strct.unpack()?.collect(),
-        //         depth,
-        //         !context.single_line,
-        //         out,
-        //     )?;
-        //     out.push('}');
-        // },
         MoveTypeLayout::Struct(MoveStructLayout::WithFields(fields)) => {
             let strct = val.value_as::<Struct>()?;
             out.push('{');
@@ -510,6 +486,7 @@ fn native_format(
     mut arguments: VecDeque<Value>,
 ) -> SafeNativeResult<SmallVec<[Value; 1]>> {
     debug_assert!(ty_args.len() == 1);
+
     let ty = context
         .type_to_fully_annotated_layout(&ty_args[0])?
         .ok_or_else(|| SafeNativeError::Abort {

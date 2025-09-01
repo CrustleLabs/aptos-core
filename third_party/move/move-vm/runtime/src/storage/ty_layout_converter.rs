@@ -317,7 +317,7 @@ where
                         let (field_layout, _) = self.types_to_type_layouts::<ANNOTATED>(
                             gas_meter,
                             traversal_context,
-                            sub_ty, //&self.apply_subst_for_field_tys(&[(field_name.clone(), field_type)], ty_args)?,
+                            sub_ty,
                             count,
                             depth + 1,
                         )?;

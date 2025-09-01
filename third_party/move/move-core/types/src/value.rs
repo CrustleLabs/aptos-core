@@ -112,10 +112,6 @@ pub enum MoveStruct {
     },
     /// A decorated representation of a variant, with the variant name, tag value, and field values.
     WithVariantFields(Identifier, u16, Vec<(Identifier, MoveValue)>),
-    // WithTypesAndVariants {
-    //     type_: StructTag,
-    //     variants: Vec<MoveVariantLayout>,
-    // },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -189,10 +185,6 @@ pub enum MoveStructLayout {
     },
     /// A decorated representation of struct variants, containing variant and field names.
     WithVariants(Vec<MoveVariantLayout>),
-    // WithTypesAndVariants {
-    //     type_: StructTag,
-    //     variants: Vec<MoveVariantLayout>,
-    // },
 }
 
 /// Used to distinguish between aggregators ans snapshots.
