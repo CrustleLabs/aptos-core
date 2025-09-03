@@ -28,27 +28,22 @@ aptos-metrics-core = { workspace = true }
 aptos-sdk = { workspace = true }
 aptos-storage-interface = { workspace = true }
 aptos-types = { workspace = true }
-aptos-vm = { workspace = true }
 bcs = { workspace = true }
 bytes = { workspace = true }
 fail = { workspace = true }
 itertools = { workspace = true }
-move-core-types = { workspace = true }
 once_cell = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
-aptos-cached-packages = { workspace = true }
 aptos-config = { workspace = true }
 aptos-db = { workspace = true }
 aptos-db-indexer = { workspace = true, features = ["fuzzing"] }
 aptos-executor-test-helpers = { workspace = true }
 aptos-storage-interface = { workspace = true }
 aptos-temppath = { workspace = true }
-aptos-transaction-simulation = { workspace = true }
 aptos-types = { workspace = true, features = ["testing"] }
-aptos-vm-genesis = { workspace = true }
 arr_macro = { workspace = true }
 criterion = { workspace = true }
 proptest = { workspace = true }
@@ -57,7 +52,7 @@ rand = { workspace = true }
 [features]
 default = []
 fuzzing = ["aptos-consensus-types/fuzzing", "aptos-crypto/fuzzing", "aptos-types/fuzzing", "aptos-storage-interface/fuzzing"]
-failpoints = ["fail/failpoints", "aptos-vm/failpoints"]
+failpoints = ["fail/failpoints"] # Removed aptos-vm/failpoints with Move VM
 consensus-only-perf-test = []
 
 [[bench]]

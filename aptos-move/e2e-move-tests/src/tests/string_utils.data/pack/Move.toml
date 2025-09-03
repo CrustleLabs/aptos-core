@@ -1,6 +1,0 @@
-[package]
-name = "string_utils_test"
-version = "0.0.0"
-
-[dependencies]
-AptosStdlib= { local = "../../../../../framework/aptos-stdlib" }

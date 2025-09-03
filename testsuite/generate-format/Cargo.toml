@@ -23,7 +23,6 @@ aptos-network = { workspace = true }
 aptos-types = { workspace = true, features = ["fuzzing"] }
 bcs = { workspace = true }
 clap = { workspace = true }
-move-core-types = { workspace = true, features = ["fuzzing"] }
 rand = { workspace = true }
 serde = { workspace = true }
 serde-reflection = { workspace = true }

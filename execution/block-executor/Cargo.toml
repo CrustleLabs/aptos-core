@@ -1,5 +1,6 @@
 [package]
-name = "calc-dep-sizes"
+name = "aptos-block-executor"
+description = "Minimal block executor stub (Move VM removed)"
 version = "0.1.0"
 
 # Workspace inherited keys
@@ -13,7 +14,10 @@ rust-version = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
-futures = { workspace = true }
-rayon = { workspace = true }
-tokio = { workspace = true }
+aptos-types = { workspace = true }
+serde = { workspace = true }
+
+[features]
+default = []
+testing = []
+fuzzing = []

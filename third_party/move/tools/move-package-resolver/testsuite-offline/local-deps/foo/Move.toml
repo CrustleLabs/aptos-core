@@ -1,7 +1,0 @@
-[package]
-name = "Foo"
-version = "0.1.2"
-
-[dependencies]
-Bar = { local = "../bar" }
-Baz = { local = "../baz" }

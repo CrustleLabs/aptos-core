@@ -16,11 +16,9 @@ rust-version = { workspace = true }
 again = { workspace = true }
 anyhow = { workspace = true, features = ["backtrace"] }
 aptos = { workspace = true }
-aptos-cached-packages = { workspace = true }
 aptos-cli-common = { workspace = true }
 aptos-config = { workspace = true }
 aptos-db = { workspace = true }
-aptos-framework = { workspace = true }
 aptos-genesis = { workspace = true }
 aptos-global-constants = { workspace = true }
 aptos-infallible = { workspace = true }

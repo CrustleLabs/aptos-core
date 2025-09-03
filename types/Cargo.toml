@@ -41,11 +41,6 @@ hex = { workspace = true }
 itertools = { workspace = true }
 jsonwebtoken = { workspace = true }
 lru = { workspace = true }
-move-binary-format = { workspace = true }
-move-core-types = { workspace = true }
-move-model = { workspace = true }
-move-table-extension = { workspace = true }
-move-vm-types = { workspace = true }
 num-bigint = { workspace = true }
 num-derive = { workspace = true }
 num-traits = { workspace = true }
@@ -82,7 +77,6 @@ claims = { workspace = true }
 coset = { workspace = true }
 criterion = { workspace = true }
 derivative = { workspace = true }
-move-core-types = { workspace = true, features = ["fuzzing"] }
 p256 = { workspace = true }
 passkey-authenticator = { workspace = true }
 passkey-client = { workspace = true }
@@ -96,7 +90,7 @@ url = { workspace = true }
 [features]
 default = []
 testing = ["aptos-crypto/fuzzing"]
-fuzzing = ["proptest", "proptest-derive", "aptos-crypto/fuzzing", "move-core-types/fuzzing", "arbitrary"]
+fuzzing = ["proptest", "proptest-derive", "aptos-crypto/fuzzing", "arbitrary"] # Removed move-core-types/fuzzing with Move VM
 
 [[bench]]
 name = "keyless"

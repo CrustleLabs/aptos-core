@@ -1,5 +1,0 @@
-[package]
-name = "many_arguments"
-version = "0.0.0"
-
-[dependencies]

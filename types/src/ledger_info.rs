@@ -6,11 +6,11 @@
 use crate::validator_signer::ValidatorSigner;
 use crate::{
     account_address::AccountAddress,
-    block_info::{BlockInfo, Round},
-    epoch_state::EpochState,
-    on_chain_config::ValidatorSet,
+    // block_info::{BlockInfo, Round}, // Removed with Move VM
+    // epoch_state::EpochState, // Removed with Move VM
+    validator_set::ValidatorSet,
     transaction::Version,
-    validator_verifier::{ValidatorVerifier, VerifyError},
+    // validator_verifier::{ValidatorVerifier, VerifyError}, // Removed with Move VM
 };
 use aptos_crypto::{
     bls12381,
@@ -19,7 +19,7 @@ use aptos_crypto::{
 use aptos_crypto_derive::{BCSCryptoHash, CryptoHasher};
 use derivative::Derivative;
 #[cfg(any(test, feature = "fuzzing"))]
-use proptest_derive::Arbitrary;
+// use proptest_derive removed
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -50,7 +50,6 @@ use std::{
 /// votes. It sets `consensus_data_hash` to represent B so that if those 2f+1 votes are gathered a
 /// QC is formed on B.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, CryptoHasher, BCSCryptoHash)]
-#[cfg_attr(any(test, feature = "fuzzing"), derive(Arbitrary))]
 pub struct LedgerInfo {
     commit_info: BlockInfo,
 
@@ -542,7 +541,7 @@ impl<T: Clone + Send + Sync + Serialize + CryptoHash> SignatureAggregator<T> {
 }
 
 //
-// Arbitrary implementation of LedgerInfoWithV0 (for fuzzing)
+//  implementation of LedgerInfoWithV0 (for fuzzing)
 //
 
 use crate::aggregate_signature::{AggregateSignature, PartialSignatures};
@@ -556,7 +555,6 @@ use itertools::Itertools;
 use proptest::prelude::*;
 
 #[cfg(any(test, feature = "fuzzing"))]
-impl Arbitrary for LedgerInfoWithV0 {
     type Parameters = ();
     type Strategy = BoxedStrategy<Self>;
 
@@ -580,7 +578,7 @@ impl Arbitrary for LedgerInfoWithV0 {
             })
             .boxed()
     }
-}
+// Removed extra closing brace
 
 #[cfg(test)]
 mod tests {

@@ -12,7 +12,7 @@ use anyhow::{ensure, format_err, Error, Result};
 use aptos_crypto::hash::{CryptoHash, HashValue};
 use aptos_crypto_derive::{BCSCryptoHash, CryptoHasher};
 #[cfg(any(test, feature = "fuzzing"))]
-use proptest_derive::Arbitrary;
+// use proptest_derive removed
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{Display, Formatter},
@@ -27,7 +27,6 @@ const WAYPOINT_DELIMITER: char = ':';
 /// At high level, a trusted waypoint verifies the LedgerInfo for a certain epoch change.
 /// For more information, please refer to the Waypoints documentation.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[cfg_attr(any(test, feature = "fuzzing"), derive(Arbitrary))]
 pub struct Waypoint {
     /// The version of the reconfiguration transaction that is being approved by this waypoint.
     version: Version,

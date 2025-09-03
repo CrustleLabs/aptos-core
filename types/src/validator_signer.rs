@@ -15,7 +15,6 @@ use std::{convert::TryFrom, sync::Arc};
 /// validating. This struct can be used for all signing operations including block and network
 /// signing, respectively.
 #[derive(Debug)]
-#[cfg_attr(any(test, feature = "fuzzing"), derive(Clone))]
 pub struct ValidatorSigner {
     author: AccountAddress,
     private_key: Arc<bls12381::PrivateKey>,

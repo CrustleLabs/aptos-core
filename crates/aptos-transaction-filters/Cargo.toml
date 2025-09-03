@@ -15,7 +15,6 @@ rust-version = { workspace = true }
 [dependencies]
 aptos-crypto = { workspace = true }
 aptos-types = { workspace = true }
-move-core-types = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }

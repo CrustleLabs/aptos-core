@@ -53,12 +53,9 @@ aptos-storage-service-client = { workspace = true }
 aptos-storage-service-types = { workspace = true }
 aptos-temppath = { workspace = true }
 aptos-time-service = { workspace = true, features = ["async", "testing"] }
-aptos-vm = { workspace = true }
-aptos-vm-genesis = { workspace = true }
 async-trait = { workspace = true }
 bcs = { workspace = true }
 claims = { workspace = true }
 mockall = { workspace = true }
-move-core-types = { workspace = true }
 ntest = { workspace = true }
 rand = { workspace = true }

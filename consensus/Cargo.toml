@@ -48,7 +48,6 @@ aptos-time-service = { workspace = true }
 aptos-transaction-filters = { workspace = true }
 aptos-types = { workspace = true }
 aptos-validator-transaction-pool = { workspace = true }
-aptos-vm = { workspace = true }
 async-trait = { workspace = true }
 bcs = { workspace = true }
 byteorder = { workspace = true }
@@ -67,7 +66,6 @@ lru = { workspace = true }
 maplit = { workspace = true }
 mini-moka = { workspace = true }
 mirai-annotations = { workspace = true }
-move-core-types = { workspace = true }
 num-derive = { workspace = true }
 num-traits = { workspace = true }
 once_cell = { workspace = true }
@@ -87,7 +85,6 @@ tokio-retry = { workspace = true }
 tokio-stream = { workspace = true }
 
 [dev-dependencies]
-aptos-cached-packages = { workspace = true }
 aptos-config = { workspace = true, features = ["fuzzing"] }
 aptos-consensus-types = { workspace = true, features = ["fuzzing"] }
 aptos-executor-test-helpers = { workspace = true }
@@ -98,11 +95,8 @@ aptos-network = { workspace = true, features = ["fuzzing"] }
 aptos-safety-rules = { workspace = true, features = ["testing"] }
 aptos-transaction-filters = { workspace = true, features = ["fuzzing"] }
 aptos-types = { workspace = true, features = ["testing"] }
-aptos-vm = { workspace = true, features = ["fuzzing"] }
-aptos-vm-validator = { workspace = true }
 claims = { workspace = true }
 mockall = { workspace = true }
-move-core-types = { workspace = true }
 proptest = { workspace = true }
 proptest-derive = { workspace = true }
 tempfile = { workspace = true }

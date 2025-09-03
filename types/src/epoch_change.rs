@@ -119,17 +119,7 @@ impl EpochChangeProof {
     }
 }
 
-#[cfg(any(test, feature = "fuzzing"))]
-impl Arbitrary for EpochChangeProof {
-    type Parameters = ();
-    type Strategy = BoxedStrategy<Self>;
-
-    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
-        (vec(any::<LedgerInfoWithSignatures>(), 0..10), any::<bool>())
-            .prop_map(|(ledger_infos_with_sigs, more)| Self::new(ledger_infos_with_sigs, more))
-            .boxed()
-    }
-}
+// Removed Arbitrary implementation with Move VM
 
 #[cfg(test)]
 mod tests {

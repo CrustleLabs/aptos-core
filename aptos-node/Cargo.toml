@@ -18,7 +18,6 @@ aptos-admin-service = { workspace = true }
 aptos-api = { workspace = true }
 aptos-backup-service = { workspace = true }
 aptos-build-info = { workspace = true }
-aptos-cached-packages = { workspace = true }
 aptos-channels = { workspace = true }
 aptos-config = { workspace = true }
 aptos-consensus = { workspace = true }
@@ -32,7 +31,6 @@ aptos-db-indexer = { workspace = true }
 aptos-dkg-runtime = { workspace = true }
 aptos-event-notifications = { workspace = true }
 aptos-executor = { workspace = true }
-aptos-framework = { workspace = true }
 aptos-genesis = { workspace = true }
 aptos-indexer = { workspace = true, optional = true }
 aptos-indexer-grpc-fullnode = { workspace = true }
@@ -62,8 +60,6 @@ aptos-temppath = { workspace = true }
 aptos-time-service = { workspace = true }
 aptos-types = { workspace = true }
 aptos-validator-transaction-pool = { workspace = true }
-aptos-vm = { workspace = true }
-aptos-vm-environment = { workspace = true }
 bcs = { workspace = true }
 clap = { workspace = true }
 either = { workspace = true }

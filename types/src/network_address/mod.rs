@@ -11,7 +11,7 @@ use aptos_crypto::{
 #[cfg(any(test, feature = "fuzzing"))]
 use proptest::prelude::*;
 #[cfg(any(test, feature = "fuzzing"))]
-use proptest_derive::Arbitrary;
+// use proptest_derive removed
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::{Into, TryFrom},
@@ -110,7 +110,6 @@ pub struct NetworkAddress(Vec<Protocol>);
 
 /// A single protocol in the [`NetworkAddress`] protocol stack.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-#[cfg_attr(any(test, feature = "fuzzing"), derive(Arbitrary))]
 pub enum Protocol {
     Ip4(Ipv4Addr),
     Ip6(Ipv6Addr),
@@ -730,7 +729,6 @@ impl<'de> Deserialize<'de> for DnsName {
 }
 
 #[cfg(any(test, feature = "fuzzing"))]
-impl Arbitrary for DnsName {
     type Parameters = ();
     type Strategy = BoxedStrategy<Self>;
 
@@ -751,7 +749,6 @@ impl Arbitrary for DnsName {
             })
             .boxed()
     }
-}
 
 /////////////
 // Parsing //
