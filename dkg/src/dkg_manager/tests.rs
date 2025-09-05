@@ -26,7 +26,7 @@ use aptos_types::{
     },
 };
 use aptos_validator_transaction_pool::{TransactionFilter, VTxnPoolState};
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{
     sync::Arc,
     time::{Duration, Instant},

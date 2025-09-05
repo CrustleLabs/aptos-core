@@ -18,7 +18,7 @@ use aptos_types::{
     },
     PeerId,
 };
-use move_core_types::{account_address::AccountAddress, transaction_argument::TransactionArgument};
+use aptos_types::{account_address::AccountAddress, transaction_argument::TransactionArgument};
 use rand::{rngs::OsRng, thread_rng, Rng};
 
 /// Creates and returns an account authenticator with the given public key

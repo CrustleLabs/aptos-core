@@ -14,7 +14,7 @@ use aptos_types::{
     state_store::state_storage_usage::StateStorageUsage,
     transaction::Version,
 };
-use move_core_types::{language_storage::TypeTag, move_resource::MoveStructType};
+use aptos_types::{language_storage::TypeTag, move_resource::MoveStructType};
 use proptest::{
     arbitrary::{any, any_with},
     collection::vec,

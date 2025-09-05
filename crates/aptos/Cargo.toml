@@ -4,91 +4,26 @@ description = "Aptos tool for management of nodes and interacting with the block
 version = "7.7.0"
 
 # Workspace inherited keys
-authors = { workspace = true }
-edition = { workspace = true }
-homepage = { workspace = true }
-license = { workspace = true }
-publish = { workspace = true }
-repository = { workspace = true }
-rust-version = { workspace = true }
+authors = ["Aptos Foundation <opensource@aptoslabs.com>"]
+edition = "2021"
+homepage = "https://aptoslabs.com"
+license = "Apache-2.0"
+publish = false
+repository = "https://github.com/aptos-labs/aptos-core"
+rust-version = "1.70"
 
 [dependencies]
 anyhow = { workspace = true }
-aptos-api-types = { workspace = true }
-aptos-backup-cli = { workspace = true }
-aptos-bitvec = { workspace = true }
-aptos-build-info = { workspace = true }
-aptos-cli-common = { workspace = true }
-aptos-config = { workspace = true }
-aptos-crypto = { workspace = true }
-aptos-faucet-core = { workspace = true }
-aptos-genesis = { workspace = true }
-aptos-github-client = { workspace = true }
-aptos-global-constants = { workspace = true }
-aptos-indexer-grpc-server-framework = { workspace = true }
-aptos-indexer-processor-sdk = { workspace = true }
-aptos-keygen = { workspace = true }
-aptos-ledger = { workspace = true }
-aptos-localnet = { workspace = true }
-aptos-logger = { workspace = true }
-aptos-network-checker = { workspace = true }
-aptos-node = { workspace = true }
-aptos-rest-client = { workspace = true }
-aptos-sdk = { workspace = true }
-aptos-storage-interface = { workspace = true }
-aptos-telemetry = { workspace = true }
-aptos-temppath = { workspace = true }
-aptos-types = { workspace = true }
-async-trait = { workspace = true }
-backoff = { workspace = true }
-base64 = { workspace = true }
-bcs = { workspace = true }
-bollard = { workspace = true }
-chrono = { workspace = true }
-clap = { workspace = true, features = ["env", "unstable-styles", "wrap_help"] }
-clap_complete = { workspace = true }
-colored = { workspace = true }
-dashmap = { workspace = true }
-diesel = { workspace = true, features = ["postgres_backend"] }
-diesel-async = { workspace = true }
-dirs = { workspace = true }
-futures = { workspace = true }
-hex = { workspace = true }
-indoc = { workspace = true }
-itertools = { workspace = true }
-maplit = { workspace = true }
-open = { workspace = true }
-pathsearch = { workspace = true }
-poem = { workspace = true }
-processor = { workspace = true }
-rand = { workspace = true }
-regex = { workspace = true }
-reqwest = { workspace = true }
-self_update = { git = "https://github.com/banool/self_update.git", rev = "8306158ad0fd5b9d4766a3c6bf967e7ef0ea5c4b", features = [
-    "archive-zip",
-    "compression-zip-deflate",
-] }
+clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = { workspace = true }
-set_env = { workspace = true }
-tempfile = { workspace = true }
-thiserror = { workspace = true }
+serde_yaml = "0.9"
 tokio = { workspace = true }
-toml = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-url = { workspace = true }
+chrono = "0.4"
+hyper = { version = "0.14", features = ["full"] }
+hyper-tls = "0.5"
+rand = "0.8"
 
-[target.'cfg(unix)'.dependencies]
-jemallocator = { workspace = true }
-
-[features]
-default = []
-fuzzing = []
-no-upload-proposal = []
-indexer = ["aptos-node/indexer"]
-cli-framework-test-move = []
-
-[build-dependencies]
-shadow-rs = { workspace = true }
+[[bin]]
+name = "aptos"
+path = "src/main.rs"

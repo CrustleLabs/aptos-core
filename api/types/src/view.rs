@@ -3,7 +3,7 @@
 
 use crate::{EntryFunctionId, MoveType};
 use aptos_types::serde_helper::vec_bytes;
-use move_core_types::{
+use aptos_types::{
     identifier::Identifier,
     language_storage::{ModuleId, TypeTag},
 };

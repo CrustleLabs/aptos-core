@@ -3,7 +3,7 @@
 
 use crate::{block_transaction_filter::BlockTransactionFilter, tests::utils};
 use aptos_crypto::HashValue;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 
 #[test]
 fn test_block_transaction_filter_config_allow() {

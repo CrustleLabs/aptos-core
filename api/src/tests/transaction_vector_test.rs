@@ -27,7 +27,7 @@ use aptos_types::{
     chain_id::ChainId,
     transaction::{EntryFunction, RawTransaction, Script, SignedTransaction, TransactionArgument},
 };
-use move_core_types::{
+use aptos_types::{
     identifier::Identifier,
     language_storage::{ModuleId, StructTag, TypeTag},
 };

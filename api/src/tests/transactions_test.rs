@@ -22,7 +22,7 @@ use aptos_types::{
     },
     utility_coin::{AptosCoinType, CoinType},
 };
-use move_core_types::{
+use aptos_types::{
     identifier::Identifier,
     language_storage::{ModuleId, TypeTag},
 };

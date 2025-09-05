@@ -16,7 +16,7 @@ use aptos_types::{
     jwks::{ProviderJWKs, QuorumCertifiedUpdate},
     validator_verifier::VerifyError,
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{collections::BTreeSet, marker::PhantomData, sync::Arc};
 
 /// The aggregation state of reliable broadcast where a validator broadcast JWK observation requests

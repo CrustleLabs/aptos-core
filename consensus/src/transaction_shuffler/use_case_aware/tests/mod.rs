@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use aptos_types::transaction::use_case::{UseCaseAwareTransaction, UseCaseKey};
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use proptest_derive::Arbitrary;
 use std::fmt::Debug;
 

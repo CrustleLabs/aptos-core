@@ -5,7 +5,7 @@ use super::{new_test_context, new_test_context_with_orderless_flags};
 use aptos_api_test_context::{current_function_name, TestContext};
 use aptos_sdk::{transaction_builder::aptos_stdlib::aptos_token_stdlib, types::LocalAccount};
 use aptos_storage_interface::DbReader;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use rstest::rstest;
 use serde::Serialize;
 use serde_json::{json, Value};

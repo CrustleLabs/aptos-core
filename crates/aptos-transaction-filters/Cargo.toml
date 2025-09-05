@@ -1,5 +1,4 @@
 [package]
-name = "aptos-transaction-filters"
 description = "The transaction filters used by various Aptos components."
 version = "0.1.0"
 

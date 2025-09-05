@@ -39,7 +39,7 @@ use aptos_types::{
     write_set::{WriteOp, WriteSet},
 };
 use bytes::Bytes;
-use move_core_types::{
+use aptos_types::{
     ident_str,
     language_storage::{StructTag, TypeTag},
 };

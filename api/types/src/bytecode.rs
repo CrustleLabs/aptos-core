@@ -20,7 +20,7 @@ use move_binary_format::{
         StructFieldInformation, StructHandle, StructHandleIndex,
     },
 };
-use move_core_types::{account_address::AccountAddress, identifier::IdentStr};
+use aptos_types::{account_address::AccountAddress, identifier::IdentStr};
 use std::borrow::Borrow;
 
 pub trait Bytecode {

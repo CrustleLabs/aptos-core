@@ -50,6 +50,19 @@ impl AccountAddress {
     }
 }
 
+#[cfg(any(test, feature = "fuzzing"))]
+impl proptest::arbitrary::Arbitrary for AccountAddress {
+    type Parameters = ();
+    type Strategy = proptest::strategy::BoxedStrategy<Self>;
+
+    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+        use proptest::prelude::*;
+        any::<[u8; Self::LENGTH]>()
+            .prop_map(|bytes| Self(bytes))
+            .boxed()
+    }
+}
+
 impl fmt::Display for AccountAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "0x{}", hex::encode(self.0))
@@ -59,5 +72,18 @@ impl fmt::Display for AccountAddress {
 impl From<[u8; AccountAddress::LENGTH]> for AccountAddress {
     fn from(bytes: [u8; AccountAddress::LENGTH]) -> Self {
         Self::new(bytes)
+    }
+}
+
+impl TryFrom<&[u8]> for AccountAddress {
+    type Error = anyhow::Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        if bytes.len() != Self::LENGTH {
+            return Err(anyhow::anyhow!("Invalid address length: expected {}, got {}", Self::LENGTH, bytes.len()));
+        }
+        let mut addr = [0u8; Self::LENGTH];
+        addr.copy_from_slice(bytes);
+        Ok(Self(addr))
     }
 }

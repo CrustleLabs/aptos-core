@@ -6,7 +6,7 @@ use aptos_consensus::transaction_shuffler_fuzzing::use_case_aware::{Config, UseC
 use aptos_types::transaction::use_case::{UseCaseAwareTransaction, UseCaseKey};
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 
 #[derive(Arbitrary, Debug, PartialEq, Eq, Clone)]
 pub enum UseCaseKeyU8 {

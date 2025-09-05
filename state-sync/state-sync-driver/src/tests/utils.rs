@@ -43,7 +43,7 @@ use aptos_types::{
     write_set::WriteSet,
 };
 use futures::{channel::mpsc, StreamExt};
-use move_core_types::language_storage::TypeTag;
+use aptos_types::language_storage::TypeTag;
 use rand::{rngs::OsRng, Rng};
 
 /// Creates a new data stream listener and notification sender pair

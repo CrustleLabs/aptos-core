@@ -8,7 +8,7 @@ use crate::{
 };
 use aptos_crypto::HashValue;
 use aptos_types::transaction::SignedTransaction;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 
 #[test]
 fn test_all_filter() {

@@ -19,7 +19,7 @@ use aptos_types::{
     network_address::{NetworkAddress, Protocol},
     on_chain_config::{OnChainConfig, OnChainConsensusConfig, OnChainExecutionConfig},
 };
-use move_core_types::language_storage::CORE_CODE_ADDRESS;
+use aptos_types::language_storage::CORE_CODE_ADDRESS;
 use rand::random;
 use std::{collections::HashSet, net::Ipv4Addr, sync::Arc, time::Duration};
 

@@ -10,7 +10,7 @@ use crate::{
 };
 use aptos_rest_client::aptos_api_types::{EntryFunctionId, ViewRequest};
 use aptos_types::stake_pool::StakePool;
-use move_core_types::ident_str;
+use aptos_types::ident_str;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{

@@ -28,7 +28,7 @@ use aptos_types::{
     transaction::{ExecutionStatus, TransactionInfo, TransactionInfoV0},
     write_set::{WriteOp, WriteSet, WriteSetMut},
 };
-use move_core_types::{account_address::AccountAddress, ident_str, language_storage::StructTag};
+use aptos_types::{account_address::AccountAddress, ident_str, language_storage::StructTag};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::{collections::HashSet, str::FromStr};

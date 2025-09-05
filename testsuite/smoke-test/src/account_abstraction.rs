@@ -13,7 +13,7 @@ use ethers::{
     types::{Address, H256},
     utils::keccak256,
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use rand::thread_rng;
 use serde::Serialize;
 use std::sync::Arc;

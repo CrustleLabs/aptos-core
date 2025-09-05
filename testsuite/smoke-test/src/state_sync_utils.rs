@@ -15,7 +15,7 @@ use aptos_inspection_service::inspection_client::InspectionClient;
 use aptos_rest_client::Client as RestClient;
 use aptos_sdk::types::PeerId;
 use aptos_storage_interface::DbReader;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{
     sync::Arc,
     time::{Duration, Instant},

@@ -22,7 +22,7 @@ use futures::{
     channel::mpsc::{channel, Receiver},
     StreamExt,
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use tokio::{sync::mpsc::channel as TokioChannel, time::timeout};
 

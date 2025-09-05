@@ -8,7 +8,7 @@ use aptos_jwk_utils::{fetch_jwks_from_jwks_uri, fetch_jwks_uri_from_openid_confi
 use aptos_logger::{debug, info};
 use aptos_types::jwks::{jwk::JWK, Issuer};
 use futures::{FutureExt, StreamExt};
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::time::{Duration, Instant};
 use tokio::{sync::oneshot, task::JoinHandle, time::MissedTickBehavior};
 

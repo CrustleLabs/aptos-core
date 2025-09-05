@@ -8,7 +8,7 @@ use aptos_types::{
     transaction::Version,
 };
 use clap::Parser;
-use move_core_types::{account_address::AccountAddress, language_storage::StructTag};
+use aptos_types::{account_address::AccountAddress, language_storage::StructTag};
 use owo_colors::OwoColorize;
 use std::str::FromStr;
 

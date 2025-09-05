@@ -13,7 +13,7 @@ use aptos_types::{
     function_info::FunctionInfo,
     transaction::{EntryFunction, TransactionStatus},
 };
-use move_core_types::{identifier::Identifier, language_storage::ModuleId, vm_status::StatusCode};
+use aptos_types::{identifier::Identifier, language_storage::ModuleId, vm_status::StatusCode};
 use rand::rngs::OsRng;
 use rstest::rstest;
 use serde_json::json;

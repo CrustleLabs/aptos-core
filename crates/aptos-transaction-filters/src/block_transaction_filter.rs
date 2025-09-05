@@ -4,7 +4,7 @@
 use crate::transaction_filter::TransactionMatcher;
 use aptos_crypto::HashValue;
 use aptos_types::transaction::SignedTransaction;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use serde::{Deserialize, Serialize};
 
 /// A block transaction filter that applies a set of rules to determine

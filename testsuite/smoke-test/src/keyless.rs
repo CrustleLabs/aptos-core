@@ -42,7 +42,7 @@ use aptos_types::{
         SignedTransaction,
     },
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use serde::de::DeserializeOwned;
 use std::{fmt::Debug, sync::Arc, time::Duration};
 // TODO(keyless): Test the override aud_val path

@@ -42,7 +42,7 @@ use aptos_types::{
     validator_signer::ValidatorSigner,
 };
 use futures::FutureExt;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use std::{

@@ -40,7 +40,7 @@ use aptos_types::{
         authenticator::EphemeralSignature, IndexedTransactionSummary, SignedTransaction,
     },
 };
-use move_core_types::{
+use aptos_types::{
     ident_str,
     language_storage::{ModuleId, StructTag, TypeTag},
 };

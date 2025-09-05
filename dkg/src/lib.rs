@@ -19,7 +19,7 @@ use aptos_event_notifications::{
 };
 use aptos_network::application::interface::{NetworkClient, NetworkServiceEvents};
 use aptos_validator_transaction_pool::VTxnPoolState;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use tokio::runtime::Runtime;
 pub use types::DKGMessage;
 

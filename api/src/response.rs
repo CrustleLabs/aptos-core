@@ -31,7 +31,7 @@
 
 use super::{accept_type::AcceptType, bcs_payload::Bcs};
 use aptos_api_types::{Address, AptosError, AptosErrorCode, HashValue, LedgerInfo};
-use move_core_types::{
+use aptos_types::{
     identifier::{IdentStr, Identifier},
     language_storage::StructTag,
 };

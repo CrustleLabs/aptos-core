@@ -25,7 +25,7 @@ use aptos_types::{
     vm_status::AbortLocation,
     write_set, AptosCoinType,
 };
-use move_core_types::language_storage;
+use aptos_types::language_storage;
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use serde_reflection::{Registry, Result, Samples, Tracer, TracerConfig};

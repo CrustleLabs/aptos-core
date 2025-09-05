@@ -29,7 +29,7 @@ use aptos_protos::{
 };
 use aptos_types::jwks::jwk::JWK;
 use hex;
-use move_core_types::ability::Ability;
+use aptos_types::ability::Ability;
 use std::time::Duration;
 
 pub fn convert_move_module_id(move_module_id: &MoveModuleId) -> transaction::MoveModuleId {

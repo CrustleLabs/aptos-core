@@ -56,7 +56,7 @@ use aptos_types::{
 };
 use futures::StreamExt;
 use futures_channel::oneshot;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{
     sync::Arc,
     time::{Duration, Instant},

@@ -27,7 +27,7 @@ use aptos_transaction_filters::{
 use aptos_types::on_chain_config::{
     ConsensusAlgorithmConfig, OnChainConsensusConfig, ValidatorTxnConfig, DEFAULT_WINDOW_SIZE,
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::sync::Arc;
 
 #[tokio::test]

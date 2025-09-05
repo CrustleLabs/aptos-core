@@ -4,7 +4,7 @@
 use anyhow::Result;
 use aptos_types::jwks::jwk::JWK;
 use http::header::COOKIE;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

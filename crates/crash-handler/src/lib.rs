@@ -6,7 +6,7 @@
 
 use aptos_logger::prelude::*;
 use backtrace::Backtrace;
-use move_core_types::state::{self, VMState};
+use aptos_types::state::{self, VMState};
 use serde::Serialize;
 use std::{
     panic::{self, PanicHookInfo},

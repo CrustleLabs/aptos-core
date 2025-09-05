@@ -13,7 +13,7 @@ use aptos_types::{
 use criterion::{criterion_group, criterion_main, Criterion};
 use derivative::Derivative;
 use fxhash::FxHasher;
-use move_core_types::{
+use aptos_types::{
     account_address::AccountAddress, language_storage::StructTag, move_resource::MoveStructType,
 };
 use once_cell::sync::OnceCell;

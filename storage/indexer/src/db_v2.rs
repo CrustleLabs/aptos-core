@@ -29,7 +29,7 @@ use aptos_types::{
 };
 use bytes::Bytes;
 use dashmap::{DashMap, DashSet};
-use move_core_types::{
+use aptos_types::{
     ident_str,
     language_storage::{StructTag, TypeTag},
 };

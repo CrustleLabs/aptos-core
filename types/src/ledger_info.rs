@@ -544,11 +544,8 @@ impl<T: Clone + Send + Sync + Serialize + CryptoHash> SignatureAggregator<T> {
 //  implementation of LedgerInfoWithV0 (for fuzzing)
 //
 
-use crate::aggregate_signature::{AggregateSignature, PartialSignatures};
-#[cfg(any(test, feature = "fuzzing"))]
-use crate::validator_verifier::generate_validator_verifier;
-#[cfg(any(test, feature = "fuzzing"))]
-use crate::validator_verifier::random_validator_verifier;
+use crate::aggregate_signature::AggregateSignature;
+// Removed validator_verifier imports - module deleted
 use aptos_bitvec::BitVec;
 use itertools::Itertools;
 #[cfg(any(test, feature = "fuzzing"))]

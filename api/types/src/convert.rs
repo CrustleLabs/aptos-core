@@ -40,7 +40,7 @@ use aptos_types::{
     write_set::WriteOp,
 };
 use bytes::Bytes;
-use move_core_types::{
+use aptos_types::{
     account_address::AccountAddress,
     ident_str,
     identifier::{IdentStr, Identifier},
@@ -907,7 +907,7 @@ impl<'a, S: StateView> MoveConverter<'a, S> {
         layout: &MoveTypeLayout,
         val: Value,
     ) -> Result<move_core_types::value::MoveValue> {
-        use move_core_types::value::MoveValue::*;
+        use aptos_types::value::MoveValue::*;
         Ok(match layout {
             MoveTypeLayout::Bool => Bool(serde_json::from_value::<bool>(val)?),
             MoveTypeLayout::U8 => U8(serde_json::from_value::<u8>(val)?),
@@ -1187,7 +1187,7 @@ impl<R: StateView> AsConverter<R> for R {
 }
 
 pub fn new_vm_utf8_string(string: &str) -> move_core_types::value::MoveValue {
-    use move_core_types::value::{MoveStruct, MoveValue};
+    use aptos_types::value::{MoveStruct, MoveValue};
 
     let byte_vector = MoveValue::Vector(
         string

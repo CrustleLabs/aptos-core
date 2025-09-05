@@ -1,5 +1,4 @@
 [package]
-name = "aptos-scratchpad"
 description = "Aptos scratchpad"
 version = "0.1.0"
 

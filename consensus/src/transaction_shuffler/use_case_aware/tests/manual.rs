@@ -17,7 +17,7 @@ use aptos_types::{
     },
 };
 use itertools::Itertools;
-use move_core_types::{identifier::Identifier, language_storage::ModuleId};
+use aptos_types::{identifier::Identifier, language_storage::ModuleId};
 use std::str::FromStr;
 
 const PP: Contract = Contract::Platform;

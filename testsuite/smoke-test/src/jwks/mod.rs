@@ -23,7 +23,7 @@ use aptos_types::{
     },
     on_chain_config::OnChainJWKConsensusConfig,
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::time::Duration;
 
 pub async fn update_jwk_consensus_config(

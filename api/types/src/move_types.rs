@@ -12,7 +12,7 @@ use move_binary_format::{
     access::ModuleAccess,
     file_format::{CompiledModule, CompiledScript, StructTypeParameter, Visibility},
 };
-use move_core_types::{
+use aptos_types::{
     ability::{Ability, AbilitySet},
     account_address::AccountAddress,
     identifier::Identifier,
@@ -1376,7 +1376,7 @@ pub fn verify_identifier(identifier: &str) -> anyhow::Result<()> {
 mod tests {
     use super::*;
     use aptos_types::account_address::AccountAddress;
-    use move_core_types::{
+    use aptos_types::{
         ability::AbilitySet,
         identifier::Identifier,
         language_storage::{StructTag, TypeTag},

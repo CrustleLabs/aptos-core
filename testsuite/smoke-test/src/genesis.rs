@@ -24,7 +24,7 @@ use aptos_forge::{
 };
 use aptos_temppath::TempPath;
 use aptos_types::{transaction::Transaction, waypoint::Waypoint};
-use move_core_types::language_storage::CORE_CODE_ADDRESS;
+use aptos_types::language_storage::CORE_CODE_ADDRESS;
 use regex::Regex;
 use reqwest::Client;
 use std::{

@@ -40,7 +40,7 @@ use aptos_vm::{
     sharded_block_executor::{executor_client::ExecutorClient, ShardedBlockExecutor},
     AptosVM, VMBlockExecutor,
 };
-use move_core_types::vm_status::VMStatus;
+use aptos_types::vm_status::VMStatus;
 use std::sync::{mpsc::channel, Arc};
 
 pub struct PtxBlockExecutor;

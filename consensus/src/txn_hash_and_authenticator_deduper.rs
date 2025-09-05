@@ -118,7 +118,7 @@ mod tests {
         utility_coin::AptosCoinType,
         CoinType,
     };
-    use move_core_types::{account_address::AccountAddress, ident_str, language_storage::ModuleId};
+    use aptos_types::{account_address::AccountAddress, ident_str, language_storage::ModuleId};
     use std::time::Instant;
 
     struct Account {

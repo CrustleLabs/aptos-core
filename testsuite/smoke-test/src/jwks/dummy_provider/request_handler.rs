@@ -3,7 +3,7 @@
 
 use aptos_infallible::Mutex;
 use hyper::{Body, Request};
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{collections::HashSet, str::FromStr};
 
 /// A handler that handles JWK requests from a validator,

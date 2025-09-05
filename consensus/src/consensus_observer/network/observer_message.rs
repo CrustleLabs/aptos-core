@@ -1061,7 +1061,7 @@ mod test {
         PeerId,
     };
     use claims::{assert_matches, assert_ok};
-    use move_core_types::account_address::AccountAddress;
+    use aptos_types::account_address::AccountAddress;
     use std::ops::Deref;
 
     #[test]

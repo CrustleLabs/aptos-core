@@ -39,7 +39,7 @@ impl MixedPayloadClient {
     fn extra_test_only_vtxns(&self) -> Vec<ValidatorTransaction> {
         fail_point!("mixed_payload_client::extra_test_only_vtxns", |_| {
             use aptos_types::dkg::{DKGTranscript, DKGTranscriptMetadata};
-            use move_core_types::account_address::AccountAddress;
+            use aptos_types::account_address::AccountAddress;
 
             vec![ValidatorTransaction::DKGResult(DKGTranscript {
                 metadata: DKGTranscriptMetadata {

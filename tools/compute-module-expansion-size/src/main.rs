@@ -4,7 +4,7 @@
 use anyhow::{format_err, Result};
 use clap::Parser;
 use move_binary_format::CompiledModule;
-use move_core_types::language_storage::ModuleId;
+use aptos_types::language_storage::ModuleId;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{fmt::Write, path::PathBuf};
 use tokio::fs;

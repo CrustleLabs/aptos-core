@@ -56,7 +56,7 @@ use aptos_types::{
 };
 use dashmap::DashMap;
 use itertools::zip_eq;
-use move_core_types::move_resource::MoveStructType;
+use aptos_types::move_resource::MoveStructType;
 use std::{
     borrow::Borrow,
     sync::{

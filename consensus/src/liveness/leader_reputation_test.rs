@@ -27,7 +27,7 @@ use aptos_types::{
 };
 use claims::assert_err;
 use itertools::Itertools;
-use move_core_types::{language_storage::TypeTag, move_resource::MoveStructType};
+use aptos_types::{language_storage::TypeTag, move_resource::MoveStructType};
 use num_traits::Pow;
 use std::{collections::HashMap, sync::Arc};
 

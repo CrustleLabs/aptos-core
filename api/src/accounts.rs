@@ -27,7 +27,7 @@ use aptos_types::{
     event::{EventHandle, EventKey},
     state_store::state_key::StateKey,
 };
-use move_core_types::{
+use aptos_types::{
     identifier::Identifier, language_storage::StructTag, move_resource::MoveStructType,
 };
 use poem_openapi::{

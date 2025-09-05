@@ -17,7 +17,7 @@ use aptos_types::{
     },
     validator_verifier::{ValidatorConsensusInfo, ValidatorVerifier},
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::sync::Arc;
 
 #[test]

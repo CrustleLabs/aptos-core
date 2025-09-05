@@ -21,7 +21,7 @@ use aptos_rest_client::{
     Client,
 };
 use aptos_types::{account_address::AccountAddress, account_config::AccountResource};
-use move_core_types::{
+use aptos_types::{
     ident_str,
     identifier::IdentStr,
     language_storage::{ModuleId, StructTag, TypeTag},

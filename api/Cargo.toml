@@ -49,7 +49,6 @@ tokio = { workspace = true }
 [dev-dependencies]
 aptos-api-test-context = { workspace = true }
 aptos-proptest-helpers = { workspace = true }
-aptos-transaction-filters = { workspace = true, features = ["fuzzing"] }
 passkey-types = { workspace = true }
 percent-encoding = { workspace = true }
 proptest = { workspace = true }

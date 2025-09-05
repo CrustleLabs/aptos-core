@@ -11,7 +11,7 @@ use aptos_rest_client::Client;
 use aptos_types::on_chain_config::{
     ConsensusAlgorithmConfig, OnChainConsensusConfig, ValidatorTxnConfig,
 };
-use move_core_types::language_storage::CORE_CODE_ADDRESS;
+use aptos_types::language_storage::CORE_CODE_ADDRESS;
 use std::{sync::Arc, time::Duration};
 use tokio::task::JoinHandle;
 

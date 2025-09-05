@@ -12,7 +12,7 @@ use aptos_types::{
     epoch_state::EpochState,
     validator_verifier::VerifyError,
 };
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
 pub struct TranscriptAggregator<S: DKGTrait> {

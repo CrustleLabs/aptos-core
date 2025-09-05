@@ -42,7 +42,7 @@ use aptos_types::{
     write_set::{WriteOp, WriteSet},
 };
 use itertools::Itertools;
-use move_core_types::{
+use aptos_types::{
     ident_str,
     language_storage::{ModuleId, StructTag, TypeTag},
     parser::parse_type_tag,

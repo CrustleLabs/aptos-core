@@ -12,7 +12,7 @@ use aptos_types::{
     transaction::{EntryFunction, TransactionPayload},
     AptosCoinType, CoinType,
 };
-use move_core_types::{
+use aptos_types::{
     account_address::AccountAddress,
     identifier::Identifier,
     language_storage::{ModuleId, TypeTag},

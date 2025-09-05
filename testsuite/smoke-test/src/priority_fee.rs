@@ -8,7 +8,7 @@ use aptos_types::on_chain_config::{
     BlockGasLimitType, ExecutionConfigV4, OnChainExecutionConfig, TransactionDeduperType,
     TransactionShufflerType,
 };
-use move_core_types::{identifier::Identifier, language_storage::ModuleId};
+use aptos_types::{identifier::Identifier, language_storage::ModuleId};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 #[tokio::test]

@@ -418,7 +418,7 @@ mod tests {
     };
     use claims::{assert_err, assert_matches, assert_ok};
     use futures::{executor::block_on, FutureExt, StreamExt};
-    use move_core_types::language_storage::TypeTag;
+    use aptos_types::language_storage::TypeTag;
     use std::time::Duration;
     use tokio::runtime::Runtime;
 

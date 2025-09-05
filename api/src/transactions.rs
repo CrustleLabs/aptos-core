@@ -43,7 +43,7 @@ use aptos_types::{
     AptosCoinType, CoinType,
 };
 use aptos_vm::{AptosSimulationVM, AptosVM};
-use move_core_types::{ident_str, language_storage::ModuleId, vm_status::VMStatus};
+use aptos_types::{ident_str, language_storage::ModuleId, vm_status::VMStatus};
 use poem_openapi::{
     param::{Path, Query},
     payload::Json,

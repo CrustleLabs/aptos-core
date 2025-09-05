@@ -52,7 +52,7 @@ use futures::{
     SinkExt,
 };
 use futures_channel::mpsc::unbounded;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{sync::Arc, time::Duration};
 
 #[async_trait::async_trait]

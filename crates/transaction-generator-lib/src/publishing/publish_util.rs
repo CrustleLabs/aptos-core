@@ -28,7 +28,7 @@ use move_binary_format::{
     file_format::{CompiledScript, FunctionHandleIndex, IdentifierIndex, SignatureToken},
     CompiledModule,
 };
-use move_core_types::language_storage::pseudo_script_module_id;
+use aptos_types::language_storage::pseudo_script_module_id;
 use rand::{rngs::StdRng, Rng};
 
 // Information used to track a publisher and what allows to identify and

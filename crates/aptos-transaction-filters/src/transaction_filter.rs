@@ -7,7 +7,7 @@ use aptos_types::transaction::{
     EntryFunction, MultisigTransactionPayload, Script, SignedTransaction, TransactionExecutableRef,
     TransactionExtraConfig, TransactionPayload, TransactionPayloadInner,
 };
-use move_core_types::{account_address::AccountAddress, transaction_argument::TransactionArgument};
+use aptos_types::{account_address::AccountAddress, transaction_argument::TransactionArgument};
 use serde::{Deserialize, Serialize};
 
 /// A transaction filter that applies a set of rules to determine

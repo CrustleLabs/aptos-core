@@ -22,7 +22,7 @@ pub mod cli {
         access::ModuleAccess,
         file_format::{CompiledModule, CompiledScript, FunctionDefinitionIndex, SignatureToken},
     };
-    use move_core_types::{ident_str, identifier::Identifier, language_storage::ModuleId};
+    use aptos_types::{ident_str, identifier::Identifier, language_storage::ModuleId};
     use move_model::metadata::{CompilerVersion, LanguageVersion};
     // Import official transactional test runner functions
     use move_transactional_test_runner::{

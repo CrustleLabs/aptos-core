@@ -24,7 +24,7 @@ use aptos_types::{
     PeerId,
 };
 use futures::FutureExt;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::{
     sync::mpsc::{channel, Sender},

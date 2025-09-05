@@ -29,7 +29,7 @@ pub mod crypto {
 }
 
 pub mod move_types {
-    pub use move_core_types::*;
+    pub use aptos_types::*;
 }
 
 pub mod rest_client {

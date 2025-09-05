@@ -52,7 +52,7 @@ use aptos_types::{
 };
 use futures::{channel::oneshot, SinkExt};
 use mini_moka::sync::Cache;
-use move_core_types::{
+use aptos_types::{
     identifier::Identifier,
     language_storage::{ModuleId, StructTag},
     move_resource::MoveResource,

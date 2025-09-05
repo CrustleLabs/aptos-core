@@ -5,7 +5,7 @@ use aptos_language_e2e_tests::{account::Account, executor::FakeExecutor};
 use arbitrary::Arbitrary;
 use dearbitrary::Dearbitrary;
 use move_binary_format::file_format::{CompiledModule, CompiledScript, FunctionDefinitionIndex};
-use move_core_types::{
+use aptos_types::{
     language_storage::{ModuleId, TypeTag},
     value::MoveValue,
 };

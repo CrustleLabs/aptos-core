@@ -4,7 +4,7 @@
 
 use crate::{
     epoch_change::Verifier,
-    epoch_state::EpochState,
+    // epoch_state::EpochState, // Removed - module deleted
     ledger_info::{LedgerInfo, LedgerInfoWithSignatures},
     transaction::Version,
 };

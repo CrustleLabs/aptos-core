@@ -24,7 +24,7 @@ use aptos_types::{
 use aptos_vm::aptos_vm::AptosVMBlockExecutor;
 use claims::{assert_lt, assert_matches, assert_ok};
 use futures::{FutureExt, StreamExt};
-use move_core_types::language_storage::TypeTag;
+use aptos_types::language_storage::TypeTag;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, str::FromStr, sync::Arc};
 

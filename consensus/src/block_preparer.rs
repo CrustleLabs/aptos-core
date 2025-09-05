@@ -14,7 +14,7 @@ use aptos_executor_types::ExecutorResult;
 use aptos_types::transaction::SignedTransaction;
 use fail::fail_point;
 use futures::future::Shared;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{future::Future, sync::Arc, time::Instant};
 
 pub struct BlockPreparer {

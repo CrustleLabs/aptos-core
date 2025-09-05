@@ -49,7 +49,7 @@ use aptos_types::{
 };
 use bytes::Bytes;
 use dashmap::DashMap;
-use move_core_types::{
+use aptos_types::{
     account_address::AccountAddress,
     language_storage::{StructTag, TypeTag},
     move_resource::MoveStructType,

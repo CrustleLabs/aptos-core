@@ -11,7 +11,7 @@ use aptos_types::{
         EntryFunction, ReplayProtector, SignedTransaction, TransactionPayload,
     },
 };
-use move_core_types::{ident_str, language_storage::ModuleId};
+use aptos_types::{ident_str, language_storage::ModuleId};
 use rstest::rstest;
 use serde_json::json;
 use std::path::PathBuf;

@@ -8,7 +8,7 @@ use aptos_network::{
     ProtocolId,
 };
 use bytes::Bytes;
-use move_core_types::account_address::AccountAddress as PeerId;
+use aptos_types::account_address::AccountAddress as PeerId;
 use std::{collections::HashMap, time::Duration};
 
 /// Supported protocols in preferred order (from highest priority to lowest).

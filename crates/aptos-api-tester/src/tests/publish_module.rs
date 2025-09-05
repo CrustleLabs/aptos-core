@@ -29,7 +29,7 @@ use aptos_types::{
     account_address::AccountAddress,
     transaction::{EntryFunction, TransactionPayload},
 };
-use move_core_types::{ident_str, language_storage::ModuleId};
+use aptos_types::{ident_str, language_storage::ModuleId};
 use std::{collections::BTreeMap, path::PathBuf};
 
 static MODULE_NAME: &str = "message";

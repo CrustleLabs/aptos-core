@@ -7,7 +7,7 @@ use aptos_types::{
     account_address::AccountAddress,
     transaction::{EntryFunction, MultisigTransactionPayload},
 };
-use move_core_types::{
+use aptos_types::{
     ident_str,
     language_storage::{ModuleId, CORE_CODE_ADDRESS},
     value::{serialize_values, MoveValue},

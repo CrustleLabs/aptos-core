@@ -34,7 +34,7 @@ use aptos_types::{
 };
 use futures::{channel::mpsc, SinkExt};
 use futures_channel::mpsc::UnboundedSender;
-use move_core_types::account_address::AccountAddress;
+use aptos_types::account_address::AccountAddress;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 pub struct MockExecutionClient {

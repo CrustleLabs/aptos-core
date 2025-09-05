@@ -22,7 +22,7 @@ use aptos_types::{
     on_chain_config::{ExecutionConfigV2, OnChainExecutionConfig, TransactionShufflerType},
     transaction::{authenticator::AuthenticationKey, SignedTransaction, Transaction},
 };
-use move_core_types::{
+use aptos_types::{
     ident_str,
     language_storage::{ModuleId, TypeTag},
 };
