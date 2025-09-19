@@ -4,6 +4,7 @@
 use crate::{
     counters::{self, MAX_TXNS_FROM_BLOCK_TO_EXECUTE, TXN_SHUFFLE_SECONDS},
     payload_manager::TPayloadManager,
+    performance_monitoring::{PERF_TRACKER, ProcessingStage},
     transaction_deduper::TransactionDeduper,
     transaction_shuffler::TransactionShuffler,
 };
@@ -51,6 +52,27 @@ impl BlockPreparer {
             Err(ExecutorError::CouldNotGetData)
         });
         let start_time = Instant::now();
+        
+        // Record block preparation start for all transactions in the block
+        if let Some(payload) = block.payload() {
+            let transactions = match payload {
+                aptos_consensus_types::common::Payload::DirectMempool(txns) => Some(txns.as_slice()),
+                aptos_consensus_types::common::Payload::QuorumStoreInlineHybrid(inline_batches, _, _) => {
+                    inline_batches.first().map(|(_, txns)| txns.as_slice())
+                },
+                _ => None,
+            };
+            
+            if let Some(txns) = transactions {
+                for txn in txns {
+                    PERF_TRACKER.record_stage(
+                        txn.committed_hash(),
+                        ProcessingStage::BlockPrepare,
+                        std::collections::HashMap::new(),
+                    );
+                }
+            }
+        }
 
         let (txns, max_txns_from_block_to_execute, block_gas_limit) = tokio::select! {
                 // Poll the block qc future until a QC is received. Ignore None outcomes.

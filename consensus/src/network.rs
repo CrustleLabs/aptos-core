@@ -222,6 +222,7 @@ pub struct NetworkSender {
     // (self sending is not supported by the networking API).
     self_sender: aptos_channels::UnboundedSender<Event<ConsensusMsg>>,
     validators: Arc<ValidatorVerifier>,
+    #[allow(dead_code)] // Used in DAG network implementation
     time_service: aptos_time_service::TimeService,
 }
 

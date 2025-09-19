@@ -29,6 +29,7 @@ mod network;
 #[cfg(test)]
 mod network_tests;
 mod payload_client;
+mod performance_monitoring;
 mod pending_order_votes;
 mod pending_votes;
 #[cfg(test)]

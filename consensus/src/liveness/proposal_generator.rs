@@ -15,6 +15,7 @@ use crate::{
         PROPOSER_PENDING_BLOCKS_COUNT, PROPOSER_PENDING_BLOCKS_FILL_FRACTION,
     },
     payload_client::PayloadClient,
+    performance_monitoring::{PERF_TRACKER, ProcessingStage},
     util::time_service::TimeService,
 };
 use anyhow::{bail, ensure, format_err, Context};
@@ -650,6 +651,9 @@ impl ProposalGenerator {
         let validator_txn_filter =
             vtxn_pool::TransactionFilter::PendingTxnHashSet(pending_validator_txn_hashes);
 
+        // Record payload pull start time
+        let payload_pull_start = std::time::Instant::now();
+        
         let (validator_txns, mut payload) = self
             .payload_client
             .pull_payload(
@@ -671,6 +675,31 @@ impl ProposalGenerator {
             )
             .await
             .context("Fail to retrieve payload")?;
+        
+        // Record payload pull completion for all transactions
+        let payload_pull_duration = payload_pull_start.elapsed();
+        let transactions = match &payload {
+            aptos_consensus_types::common::Payload::DirectMempool(txns) => Some(txns.as_slice()),
+            aptos_consensus_types::common::Payload::QuorumStoreInlineHybrid(inline_batches, _, _) => {
+                // For inline hybrid, we'll record for the first batch's transactions as an example
+                inline_batches.first().map(|(_, txns)| txns.as_slice())
+            },
+            _ => None, // Other payload types don't directly expose transactions
+        };
+        
+        if let Some(txns) = transactions {
+            for txn in txns {
+                let mut metadata = std::collections::HashMap::new();
+                metadata.insert("payload_pull_duration".to_string(), format!("{:?}", payload_pull_duration));
+                metadata.insert("block_round".to_string(), round.to_string());
+                
+                PERF_TRACKER.record_stage(
+                    txn.committed_hash(),
+                    ProcessingStage::PayloadPull,
+                    metadata,
+                );
+            }
+        }
 
         if !payload.is_direct()
             && max_txns_from_block_to_execute.is_some()

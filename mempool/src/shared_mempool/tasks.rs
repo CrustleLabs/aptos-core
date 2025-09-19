@@ -28,10 +28,11 @@ use aptos_logger::prelude::*;
 use aptos_mempool_notifications::CommittedTransaction;
 use aptos_metrics_core::HistogramTimer;
 use aptos_network::application::interface::NetworkClientInterface;
+use aptos_types::mempool_status::MempoolStatusCode;
 use aptos_storage_interface::state_store::state_view::db_state_view::LatestDbStateCheckpointView;
 use aptos_types::{
     account_address::AccountAddress,
-    mempool_status::{MempoolStatus, MempoolStatusCode},
+    mempool_status::{MempoolStatus},
     on_chain_config::{OnChainConfigPayload, OnChainConfigProvider, OnChainConsensusConfig},
     transaction::{ReplayProtector, SignedTransaction},
     vm_status::{DiscardedVMStatus, StatusCode},
@@ -316,6 +317,16 @@ where
     NetworkClient: NetworkClientInterface<MempoolSyncMsg>,
     TransactionValidator: TransactionValidation,
 {
+    // Start performance tracking for incoming transactions
+    for (txn, _, _) in &transactions {
+        crate::performance_monitoring::PERF_TRACKER.start_transaction(txn.committed_hash(), txn.sender());
+        crate::performance_monitoring::PERF_TRACKER.record_stage(
+            txn.committed_hash(),
+            crate::performance_monitoring::ProcessingStage::MempoolReceived,
+            std::collections::HashMap::new(),
+        );
+    }
+    
     // Filter out any disallowed transactions
     let mut statuses = vec![];
     let transactions =
@@ -488,7 +499,7 @@ fn validate_and_add_transactions<NetworkClient, TransactionValidator>(
     let vm_validation_timer = counters::PROCESS_TXN_BREAKDOWN_LATENCY
         .with_label_values(&[counters::VM_VALIDATION_LABEL])
         .start_timer();
-    let validation_results = VALIDATION_POOL.install(|| {
+    let     validation_results = VALIDATION_POOL.install(|| {
         transactions
             .par_iter()
             .map(|t| {
@@ -503,6 +514,17 @@ fn validate_and_add_transactions<NetworkClient, TransactionValidator>(
             .collect::<Vec<_>>()
     });
     vm_validation_timer.stop_and_record();
+    
+    // Record validation completion for all transactions
+    for (txn, _, _, _) in &transactions {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("validation_stage".to_string(), "completed".to_string());
+        crate::performance_monitoring::PERF_TRACKER.record_stage(
+            txn.committed_hash(),
+            crate::performance_monitoring::ProcessingStage::MempoolValidation,
+            metadata,
+        );
+    }
     {
         let mut mempool = smp.mempool.lock();
         for (idx, (transaction, account_sequence_number, ready_time_at_sender, priority)) in
@@ -521,6 +543,16 @@ fn validate_and_add_transactions<NetworkClient, TransactionValidator>(
                             ready_time_at_sender,
                             priority.clone(),
                         );
+                        
+                        // Record successful addition to mempool
+                        if mempool_status.code == MempoolStatusCode::Accepted {
+                            crate::performance_monitoring::PERF_TRACKER.record_stage(
+                                transaction.committed_hash(),
+                                crate::performance_monitoring::ProcessingStage::MempoolAdded,
+                                std::collections::HashMap::new(),
+                            );
+                        }
+                        
                         statuses.push((transaction, (mempool_status, None)));
                     },
                     Some(validation_status) => {
@@ -736,6 +768,26 @@ pub(crate) fn process_committed_transactions(
             block_timestamp,
         );
         pool.commit_transaction(&transaction.sender, transaction.replay_protector);
+        
+        // Record chain commitment for this transaction
+        // Note: CommittedTransaction doesn't contain the hash, so we create a simple identifier
+        // This is a limitation - we can only track transactions that we have the full hash for
+        // For now, we'll skip this tracking for committed transactions
+        // TODO: Modify CommittedTransaction to include the transaction hash
+        
+        // Temporary workaround: create a hash from the string representation
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        transaction.sender.hash(&mut hasher);
+        transaction.replay_protector.hash(&mut hasher);
+        let tx_identifier = HashValue::from_u64(hasher.finish());
+        
+        crate::performance_monitoring::PERF_TRACKER.record_stage(
+            tx_identifier,
+            crate::performance_monitoring::ProcessingStage::ChainCommitted,
+            std::collections::HashMap::new(),
+        );
     }
 
     if block_timestamp_usecs > 0 {

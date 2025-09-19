@@ -26,6 +26,7 @@ use crate::{
     monitor,
     network::NetworkSender,
     network_interface::ConsensusMsg,
+    performance_monitoring::{PERF_TRACKER, ProcessingStage},
     pending_order_votes::{OrderVoteReceptionResult, PendingOrderVotes},
     pending_votes::{VoteReceptionResult, VoteStatus},
     persistent_liveness_storage::PersistentLivenessStorage,
@@ -635,6 +636,8 @@ impl RoundManager {
         safety_rules: Arc<Mutex<MetricsSafetyRules>>,
         proposer_election: Arc<dyn ProposerElection + Send + Sync>,
     ) -> anyhow::Result<ProposalMsg> {
+        let proposal_gen_start = std::time::Instant::now();
+        
         let proposal = proposal_generator
             .generate_proposal(new_round_event.round, proposer_election)
             .await?;
@@ -642,6 +645,33 @@ impl RoundManager {
         let signed_proposal =
             Block::new_proposal_from_block_data_and_signature(proposal, signature);
         observe_block(signed_proposal.timestamp_usecs(), BlockStage::SIGNED);
+        
+        // Record proposal generation completion for all transactions
+        let proposal_gen_duration = proposal_gen_start.elapsed();
+        if let Some(payload) = signed_proposal.payload() {
+            let transactions = match payload {
+                aptos_consensus_types::common::Payload::DirectMempool(txns) => Some(txns.as_slice()),
+                aptos_consensus_types::common::Payload::QuorumStoreInlineHybrid(inline_batches, _, _) => {
+                    inline_batches.first().map(|(_, txns)| txns.as_slice())
+                },
+                _ => None,
+            };
+            
+            if let Some(txns) = transactions {
+                for txn in txns {
+                    let mut metadata = std::collections::HashMap::new();
+                    metadata.insert("proposal_gen_duration".to_string(), format!("{:?}", proposal_gen_duration));
+                    metadata.insert("round".to_string(), new_round_event.round.to_string());
+                    
+                    PERF_TRACKER.record_stage(
+                        txn.committed_hash(),
+                        ProcessingStage::ProposalGeneration,
+                        metadata,
+                    );
+                }
+            }
+        }
+        
         info!(
             Self::new_log_with_round_epoch(
                 LogEvent::Propose,
