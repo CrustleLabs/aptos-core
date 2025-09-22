@@ -25,7 +25,7 @@ use aptos_bitvec::BitVec;
 use aptos_config::config::BlockTransactionFilterConfig;
 use aptos_consensus_types::{
     block::Block,
-    common::Round,
+    common::{Payload, Round},
     pipelined_block::{ExecutionSummary, OrderedBlockWindow, PipelinedBlock},
     quorum_cert::QuorumCert,
     sync_info::SyncInfo,
@@ -314,6 +314,8 @@ impl BlockStore {
         &self,
         finality_proof: WrappedLedgerInfo,
     ) -> anyhow::Result<()> {
+        let _tracker = aptos_performance_monitor::PerformanceMonitor::global()
+            .start_function("send_for_execution", None, &format!("block_{}", finality_proof.commit_info().id()));
         let block_id_to_commit = finality_proof.commit_info().id();
         let block_to_commit = self
             .get_block(block_id_to_commit)
@@ -342,6 +344,22 @@ impl BlockStore {
             .insert_ordered_cert(finality_proof_clone.clone());
         update_counters_for_ordered_blocks(&blocks_to_commit);
 
+        // Track commit for each transaction in the committed blocks
+        for block in &blocks_to_commit {
+            if let Some(payload) = block.payload() {
+                match payload {
+                    aptos_consensus_types::common::Payload::DirectMempool(txns) => {
+                        for txn in txns {
+                            let tx_hash = txn.committed_hash();
+                            aptos_performance_monitor::PerformanceMonitor::global()
+                                .track_block_commit(tx_hash);
+                        }
+                    },
+                    _ => {}
+                }
+            }
+        }
+        
         self.execution_client
             .finalize_order(blocks_to_commit, finality_proof.clone())
             .await

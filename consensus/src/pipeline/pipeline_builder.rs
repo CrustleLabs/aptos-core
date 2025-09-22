@@ -742,7 +742,21 @@ impl PipelineBuilder {
             })
             .collect();
 
+
         let start = Instant::now();
+        
+        // Track block execution for each transaction
+        for txn in &txns {
+            if let Some(user_txn) = txn.borrow_into_inner().try_as_signed_user_txn() {
+                let tx_hash = user_txn.committed_hash();
+                aptos_performance_monitor::PerformanceMonitor::global()
+                    .track_block_execution(tx_hash, block.id());
+            }
+        }
+        
+        let _tracker = aptos_performance_monitor::PerformanceMonitor::global()
+            .start_function("block_execution", None, &format!("block_{}", block.id()));
+        
         tokio::task::spawn_blocking(move || {
             executor
                 .execute_and_update_state(

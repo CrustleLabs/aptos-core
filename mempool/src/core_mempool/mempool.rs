@@ -346,6 +346,10 @@ impl Mempool {
         );
 
         let submitted_by_label = txn_info.insertion_info.submitted_by_label();
+        // Track transaction entering mempool
+        aptos_performance_monitor::PerformanceMonitor::global()
+            .track_mempool_entry(&txn);
+        
         let status = self.transactions.insert(txn_info, account_sequence_number);
         let now = aptos_infallible::duration_since_epoch().as_millis() as u64;
 

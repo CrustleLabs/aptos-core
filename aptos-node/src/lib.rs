@@ -697,6 +697,9 @@ pub fn setup_environment_and_start_node(
 ) -> anyhow::Result<AptosHandle> {
     // Log the node config at node startup
     node_config.log_all_configs();
+    
+    // Initialize performance monitoring signal handlers
+    aptos_consensus::signal_handler::init_signal_handlers();
 
     // Starts the admin service
     let mut admin_service = services::start_admin_service(&node_config);

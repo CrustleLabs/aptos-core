@@ -955,6 +955,7 @@ dependencies = [
  "aptos-netcore",
  "aptos-network",
  "aptos-peer-monitoring-service-types",
+ "aptos-performance-monitor",
  "aptos-reliable-broadcast",
  "aptos-runtimes",
  "aptos-safety-rules",
@@ -986,6 +987,7 @@ dependencies = [
  "lru",
  "maplit",
  "mini-moka",
+ "minstant",
  "mirai-annotations",
  "mockall 0.11.4",
  "move-core-types",
@@ -1003,6 +1005,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "sha3 0.9.1",
+ "signal-hook",
  "strum 0.27.1",
  "strum_macros 0.27.1",
  "tempfile",
@@ -1499,6 +1502,7 @@ dependencies = [
  "aptos-infallible",
  "aptos-logger",
  "aptos-metrics-core",
+ "aptos-performance-monitor",
  "aptos-sdk",
  "aptos-storage-interface",
  "aptos-temppath",
@@ -3006,6 +3010,7 @@ dependencies = [
  "aptos-netcore",
  "aptos-network",
  "aptos-peer-monitoring-service-types",
+ "aptos-performance-monitor",
  "aptos-runtimes",
  "aptos-short-hex-str",
  "aptos-storage-interface",
@@ -3630,6 +3635,20 @@ dependencies = [
  "bcs 0.1.4",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "aptos-performance-monitor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aptos-crypto",
+ "aptos-types",
+ "chrono",
+ "minstant",
+ "once_cell",
+ "signal-hook",
+ "tokio",
 ]
 
 [[package]]
@@ -11986,6 +12005,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "minstant"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fb9b5c752f145ac5046bccc3c4f62892e3c950c1d1eab80c5949cd68a2078db"
+dependencies = [
+ "ctor",
+ "web-time",
+]
+
+[[package]]
 name = "mio"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19378,6 +19407,16 @@ name = "web-sys"
 version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33b6dd2ef9186f1f2072e409e99cd22a975331a6b3591b12c764e0e55c60d5d2"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

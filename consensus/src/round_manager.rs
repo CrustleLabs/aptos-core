@@ -1323,6 +1323,23 @@ impl RoundManager {
     }
 
     async fn create_vote(&mut self, proposal: Block) -> anyhow::Result<Vote> {
+        let _tracker = aptos_performance_monitor::PerformanceMonitor::global()
+            .start_function("create_vote", None, &format!("round_{}", proposal.round()));
+        
+        // Track vote creation for transactions in the proposal
+        if let Some(payload) = proposal.payload() {
+            match payload {
+                aptos_consensus_types::common::Payload::DirectMempool(txns) => {
+                    for txn in txns {
+                        let tx_hash = txn.committed_hash();
+                        aptos_performance_monitor::PerformanceMonitor::global()
+                            .track_vote_creation(tx_hash);
+                    }
+                },
+                _ => {}
+            }
+        }
+        
         let vote = self
             .vote_block(proposal)
             .await

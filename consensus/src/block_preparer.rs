@@ -63,6 +63,10 @@ impl BlockPreparer {
                 }
         }?;
 
+        // Track timing for transaction processing
+        let _tracker = aptos_performance_monitor::PerformanceMonitor::global()
+            .start_function("block_preparation", None, &format!("block_{}", block.id()));
+
         let txn_filter_config = self.txn_filter_config.clone();
         let txn_deduper = self.txn_deduper.clone();
         let txn_shuffler = self.txn_shuffler.clone();

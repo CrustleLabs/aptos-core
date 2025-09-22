@@ -22,6 +22,7 @@ use crate::{
 use anyhow::Result;
 use aptos_config::{config::TransactionFilterConfig, network_id::PeerNetworkId};
 use aptos_consensus_types::common::RejectedTransactionSummary;
+use aptos_performance_monitor::{PerformanceMonitor, track_function};
 use aptos_crypto::HashValue;
 use aptos_infallible::{Mutex, RwLock};
 use aptos_logger::prelude::*;
@@ -484,6 +485,7 @@ fn validate_and_add_transactions<NetworkClient, TransactionValidator>(
     NetworkClient: NetworkClientInterface<MempoolSyncMsg>,
     TransactionValidator: TransactionValidation,
 {
+    track_function!("mempool_validate_and_add_transactions");
     // Track latency: VM validation
     let vm_validation_timer = counters::PROCESS_TXN_BREAKDOWN_LATENCY
         .with_label_values(&[counters::VM_VALIDATION_LABEL])
@@ -512,6 +514,10 @@ fn validate_and_add_transactions<NetworkClient, TransactionValidator>(
                 match validation_result.status() {
                     None => {
                         let ranking_score = validation_result.score();
+                        
+                        // Track transaction entering mempool
+                        PerformanceMonitor::global().track_mempool_entry(&transaction);
+                        
                         let mempool_status = mempool.add_txn(
                             transaction.clone(),
                             ranking_score,
@@ -583,7 +589,7 @@ fn validate_and_add_transactions<NetworkClient, TransactionValidator>(
             account_sequence_number,
             timeline_state,
             client_submitted,
-            read_time_at_sender,
+            ready_time_at_sender,
             priority,
         );
         statuses.push((transaction, (mempool_status, None)));

@@ -22,6 +22,7 @@ use aptos_config::config::{
     ChainHealthBackoffValues, ExecutionBackpressureConfig, ExecutionBackpressureMetric,
     PipelineBackpressureValues,
 };
+use aptos_performance_monitor::{PerformanceMonitor, track_function};
 use aptos_consensus_types::{
     block::Block,
     block_data::BlockData,
@@ -499,6 +500,7 @@ impl ProposalGenerator {
         round: Round,
         proposer_election: Arc<dyn ProposerElection + Send + Sync>,
     ) -> anyhow::Result<BlockData> {
+        track_function!("consensus_generate_proposal");
         let maybe_optqs_payload_pull_params = self.opt_qs_payload_param_provider.get_params();
 
         let hqc = self.ensure_highest_quorum_cert(round)?;
@@ -650,6 +652,10 @@ impl ProposalGenerator {
         let validator_txn_filter =
             vtxn_pool::TransactionFilter::PendingTxnHashSet(pending_validator_txn_hashes);
 
+        // Start timing for payload retrieval - for all transactions in the payload
+        let _tracker = aptos_performance_monitor::PerformanceMonitor::global()
+            .start_function("payload_pull", None, &format!("round_{}", round));
+        
         let (validator_txns, mut payload) = self
             .payload_client
             .pull_payload(
@@ -671,6 +677,21 @@ impl ProposalGenerator {
             )
             .await
             .context("Fail to retrieve payload")?;
+
+        // Track proposal generation for each transaction
+        match &payload {
+            aptos_consensus_types::common::Payload::DirectMempool(txns) => {
+                for txn in txns {
+                    let tx_hash = txn.committed_hash();
+                    aptos_performance_monitor::PerformanceMonitor::global()
+                        .track_proposal_generation(tx_hash, round);
+                }
+            },
+            _ => {
+                // For other payload types like QuorumStore, we'll track them during execution
+            }
+        }
+
 
         if !payload.is_direct()
             && max_txns_from_block_to_execute.is_some()

@@ -84,6 +84,7 @@ members = [
     "crates/aptos-logger",
     "crates/aptos-metrics-core",
     "crates/aptos-network-checker",
+    "crates/aptos-performance-monitor",
     "crates/aptos-node-identity",
     "crates/aptos-openapi",
     "crates/aptos-profiler",
@@ -414,6 +415,7 @@ aptos-node-identity = { path = "crates/aptos-node-identity" }
 aptos-node-resource-metrics = { path = "crates/node-resource-metrics" }
 aptos-num-variants = { path = "crates/num-variants" }
 aptos-openapi = { path = "crates/aptos-openapi" }
+aptos-performance-monitor = { path = "crates/aptos-performance-monitor" }
 aptos-package-builder = { path = "aptos-move/package-builder" }
 aptos-peer-monitoring-service-client = { path = "peer-monitoring-service/client" }
 aptos-peer-monitoring-service-server = { path = "peer-monitoring-service/server" }

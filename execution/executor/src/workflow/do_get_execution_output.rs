@@ -23,6 +23,7 @@ use aptos_executor_types::{
 use aptos_experimental_runtimes::thread_manager::THREAD_MANAGER;
 use aptos_logger::prelude::*;
 use aptos_metrics_core::TimerHelper;
+use aptos_performance_monitor::{PerformanceMonitor, track_function};
 use aptos_storage_interface::state_store::{
     state::LedgerState,
     state_view::cached_state_view::{CachedStateView, PrimingPolicy},
@@ -285,6 +286,7 @@ impl DoGetExecutionOutput {
         onchain_config: BlockExecutorConfigFromOnchain,
         transaction_slice_metadata: TransactionSliceMetadata,
     ) -> Result<BlockOutput<SignatureVerifiedTransaction, TransactionOutput>> {
+        track_function!("executor_execute_block");
         let _timer = OTHER_TIMERS.timer_with(&["vm_execute_block"]);
         Ok(executor.execute_block(
             txn_provider,
