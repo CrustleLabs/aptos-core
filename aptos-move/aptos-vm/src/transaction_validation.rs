@@ -409,6 +409,9 @@ pub(crate) fn run_multisig_prologue(
     // Note[Orderless]: Earlier the `provided_payload` was being calculated as bcs::to_bytes(MultisigTransactionPayload::EntryFunction(entry_function)).
     // So, converting the executable to this format.
     let provided_payload = match executable {
+        TransactionExecutableRef::CEX(_) => {
+            return Ok(());
+        },
         TransactionExecutableRef::EntryFunction(entry_function) => bcs::to_bytes(
             &MultisigTransactionPayload::EntryFunction(entry_function.clone()),
         )

@@ -35,7 +35,7 @@ use aptos_types::{
     account_address::AccountAddress,
     mempool_status::MempoolStatusCode,
     transaction::{
-        EntryFunction, ExecutionStatus, MultisigTransactionPayload, RawTransaction,
+        CEXOrder, EntryFunction, ExecutionStatus, MultisigTransactionPayload, RawTransaction,
         RawTransactionWithData, Script, SignedTransaction, TransactionExecutable,
         TransactionPayload, TransactionPayloadInner,
     },
@@ -1218,6 +1218,9 @@ impl TransactionsApi {
                             }
                         }
                     },
+                    TransactionPayload::CEX(cex_order) => {
+                        TransactionsApi::validate_cex_payload_format(ledger_info, cex_order)?;
+                    },
 
                     // Deprecated. To avoid panics when malicios users submit this
                     // payload, return an error.
@@ -1247,6 +1250,16 @@ impl TransactionsApi {
                                 ledger_info,
                                 entry_function,
                             )?;
+                        },
+                        TransactionExecutable::CEX(cex_order) => {
+                            TransactionsApi::validate_cex_payload_format(ledger_info, cex_order)?;
+                            if extra_config.is_multisig() {
+                                return Err(SubmitTransactionError::bad_request_with_code(
+                                    "CEX transaction payload must not be a multisig transaction",
+                                    AptosErrorCode::InvalidInput,
+                                    ledger_info,
+                                ));
+                            }
                         },
                         TransactionExecutable::Empty => {
                             if !extra_config.is_multisig() {
@@ -1316,6 +1329,17 @@ impl TransactionsApi {
                     )
                 })?;
         }
+        Ok(())
+    }
+
+    /// Validates that the CEX order payload is correctly formatted.
+    /// TODO: Add specific validation logic when needed
+    fn validate_cex_payload_format(
+        _ledger_info: &LedgerInfo,
+        _cex_order: &CEXOrder,
+    ) -> Result<(), SubmitTransactionError> {
+        // Placeholder for future CEX validation logic
+        // Current implementation accepts all CEX orders without validation
         Ok(())
     }
 
@@ -1579,6 +1603,7 @@ impl TransactionsApi {
                     "Multisig::unknown".to_string()
                 }
             },
+            TransactionPayload::CEX(_) => "CEX::order".to_string(),
             TransactionPayload::Payload(TransactionPayloadInner::V1 {
                 executable,
                 extra_config,
@@ -1598,6 +1623,8 @@ impl TransactionsApi {
                         &entry_function.function().into(),
                     )
                     .as_str();
+                } else if let TransactionExecutable::CEX(_) = executable {
+                    stats_key += "CEX::order";
                 } else if let TransactionExecutable::Empty = executable {
                     stats_key += "unknown";
                 };

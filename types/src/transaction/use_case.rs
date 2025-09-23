@@ -34,6 +34,7 @@ fn parse_use_case(payload: &TransactionPayload) -> UseCaseKey {
     let maybe_entry_func = match payload {
         Script(_) | ModuleBundle(_) | Multisig(_) => None,
         EntryFunction(entry_fun) => Some(entry_fun),
+        CEX(_) => None,
         v2 @ Payload(_) => {
             if let Ok(TransactionExecutableRef::EntryFunction(entry_fun)) = v2.executable_ref() {
                 Some(entry_fun)

@@ -4,8 +4,8 @@
 use aptos_crypto::{ed25519::Ed25519PublicKey, HashValue};
 use aptos_types::transaction::{
     authenticator::{AccountAuthenticator, AnyPublicKey, TransactionAuthenticator},
-    EntryFunction, MultisigTransactionPayload, Script, SignedTransaction, TransactionExecutableRef,
-    TransactionExtraConfig, TransactionPayload, TransactionPayloadInner,
+    CEXOrder, EntryFunction, MultisigTransactionPayload, Script, SignedTransaction,
+    TransactionExecutableRef, TransactionExtraConfig, TransactionPayload, TransactionPayloadInner,
 };
 use move_core_types::{account_address::AccountAddress, transaction_argument::TransactionArgument};
 use serde::{Deserialize, Serialize};
@@ -323,6 +323,7 @@ fn matches_entry_function(
     // Match all variants explicitly to ensure future enum changes are caught during compilation
     match signed_transaction.payload() {
         TransactionPayload::Script(_) | TransactionPayload::ModuleBundle(_) => false,
+        TransactionPayload::CEX(_) => false,
         TransactionPayload::Multisig(multisig) => multisig
             .transaction_payload
             .as_ref()
@@ -337,6 +338,7 @@ fn matches_entry_function(
         },
         TransactionPayload::Payload(TransactionPayloadInner::V1 { executable, .. }) => {
             match executable.as_ref() {
+                TransactionExecutableRef::CEX(_) => false,
                 TransactionExecutableRef::Script(_) | TransactionExecutableRef::Empty => false,
                 TransactionExecutableRef::EntryFunction(entry_function) => {
                     compare_entry_function(entry_function, address, module_name, function)
@@ -354,6 +356,7 @@ fn matches_entry_function_module_address(
     // Match all variants explicitly to ensure future enum changes are caught during compilation
     match signed_transaction.payload() {
         TransactionPayload::Script(_) | TransactionPayload::ModuleBundle(_) => false,
+        TransactionPayload::CEX(_) => false,
         TransactionPayload::Multisig(multisig) => multisig
             .transaction_payload
             .as_ref()
@@ -369,6 +372,7 @@ fn matches_entry_function_module_address(
         TransactionPayload::Payload(TransactionPayloadInner::V1 { executable, .. }) => {
             match executable.as_ref() {
                 TransactionExecutableRef::Script(_) | TransactionExecutableRef::Empty => false,
+                TransactionExecutableRef::CEX(_) => false,
                 TransactionExecutableRef::EntryFunction(entry_function) => {
                     compare_entry_function_module_address(entry_function, module_address)
                 },
@@ -387,6 +391,7 @@ fn matches_multisig_address(
         TransactionPayload::EntryFunction(_)
         | TransactionPayload::Script(_)
         | TransactionPayload::ModuleBundle(_) => false,
+        TransactionPayload::CEX(_) => false,
         TransactionPayload::Multisig(multisig) => multisig.multisig_address == *address,
         TransactionPayload::Payload(TransactionPayloadInner::V1 { extra_config, .. }) => {
             match extra_config {
@@ -410,9 +415,11 @@ fn matches_script_argument_address(
         TransactionPayload::EntryFunction(_)
         | TransactionPayload::Multisig(_)
         | TransactionPayload::ModuleBundle(_) => false,
+        TransactionPayload::CEX(_) => false,
         TransactionPayload::Script(script) => compare_script_argument_address(script, address),
         TransactionPayload::Payload(TransactionPayloadInner::V1 { executable, .. }) => {
             match executable.as_ref() {
+                TransactionExecutableRef::CEX(_) => false,
                 TransactionExecutableRef::EntryFunction(_) | TransactionExecutableRef::Empty => {
                     false
                 },

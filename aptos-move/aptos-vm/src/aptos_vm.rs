@@ -1000,6 +1000,13 @@ impl AptosVM {
                     )
                 })?;
             },
+            TransactionExecutableRef::CEX(_cex) => {
+                // CEX交易直接返回成功，不做任何状态修改
+                let success_status = TransactionStatus::Keep(ExecutionStatus::Success);
+                let empty_output = VMOutput::empty_with_status(success_status);
+                let vm_status = VMStatus::Executed;
+                return Ok((vm_status, empty_output));
+            },
 
             // Not reachable as this function should only be invoked for entry or script
             // transaction payload.
@@ -1152,6 +1159,13 @@ impl AptosVM {
                 } else {
                     bcs::to_bytes::<Vec<u8>>(&vec![]).map_err(|_| invariant_violation_error())?
                 }
+            },
+            TransactionExecutableRef::CEX(_) => {
+                let s = VMStatus::error(
+                    StatusCode::FEATURE_UNDER_GATING,
+                    Some("Multisig transaction does not support cex payload".to_string()),
+                );
+                return Ok((s, discarded_output(StatusCode::FEATURE_UNDER_GATING)));
             },
             TransactionExecutableRef::Script(_) => {
                 let s = VMStatus::error(

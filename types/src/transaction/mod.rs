@@ -45,6 +45,7 @@ pub mod analyzed_transaction;
 pub mod authenticator;
 pub mod block_epilogue;
 mod block_output;
+pub mod cex;
 mod change_set;
 mod module;
 mod multisig;
@@ -71,6 +72,7 @@ use crate::{
     write_set::TransactionWrite,
 };
 pub use block_output::BlockOutput;
+pub use cex::CEXOrder;
 pub use change_set::ChangeSet;
 pub use module::{Module, ModuleBundle};
 pub use move_core_types::transaction_argument::TransactionArgument;
@@ -265,6 +267,26 @@ impl RawTransaction {
             sender,
             sequence_number,
             payload: TransactionPayload::EntryFunction(entry_function),
+            max_gas_amount,
+            gas_unit_price,
+            expiration_timestamp_secs,
+            chain_id,
+        }
+    }
+
+    pub fn new_cex(
+        sender: AccountAddress,
+        sequence_number: u64,
+        cex: CEXOrder,
+        max_gas_amount: u64,
+        gas_unit_price: u64,
+        expiration_timestamp_secs: u64,
+        chain_id: ChainId,
+    ) -> Self {
+        RawTransaction {
+            sender,
+            sequence_number,
+            payload: TransactionPayload::CEX(cex),
             max_gas_amount,
             gas_unit_price,
             expiration_timestamp_secs,
@@ -679,6 +701,8 @@ pub enum TransactionPayload {
     /// Contains an executable (script/entry function) along with extra configuration.
     /// Once this new format is fully rolled out, above payload variants will be deprecated.
     Payload(TransactionPayloadInner),
+    /// A CEX transaction.
+    CEX(CEXOrder),
 }
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -693,6 +717,7 @@ pub enum TransactionPayloadInner {
 pub enum TransactionExecutable {
     Script(Script),
     EntryFunction(EntryFunction),
+    CEX(CEXOrder),
     Empty,
 }
 
@@ -716,6 +741,7 @@ impl TransactionExecutable {
             },
             TransactionExecutable::Script(script) => TransactionExecutableRef::Script(script),
             TransactionExecutable::Empty => TransactionExecutableRef::Empty,
+            TransactionExecutable::CEX(cex) => TransactionExecutableRef::CEX(cex),
         }
     }
 }
@@ -724,6 +750,7 @@ impl TransactionExecutable {
 pub enum TransactionExecutableRef<'a> {
     Script(&'a Script),
     EntryFunction(&'a EntryFunction),
+    CEX(&'a CEXOrder),
     Empty,
 }
 
@@ -755,6 +782,7 @@ impl TransactionPayload {
     pub fn is_multisig(&self) -> bool {
         match self {
             TransactionPayload::EntryFunction(_) => false,
+            TransactionPayload::CEX(_) => false,
             TransactionPayload::Script(_) => false,
             TransactionPayload::ModuleBundle(_) => false,
             TransactionPayload::Multisig(_) => true,
@@ -793,6 +821,7 @@ impl TransactionPayload {
             TransactionPayload::ModuleBundle(_) => {
                 Err(format_err!("ModuleBundle variant is deprecated"))
             },
+            TransactionPayload::CEX(cex) => Ok(TransactionExecutable::CEX(cex.clone())),
         }
     }
 
@@ -809,12 +838,14 @@ impl TransactionPayload {
             TransactionPayload::ModuleBundle(_) => {
                 Err(format_err!("ModuleBundle variant is deprecated"))
             },
+            TransactionPayload::CEX(cex) => Ok(TransactionExecutableRef::CEX(cex)),
         }
     }
 
     pub fn extra_config(&self) -> TransactionExtraConfig {
         match self {
             TransactionPayload::Script(_)
+            | TransactionPayload::CEX(_)
             | TransactionPayload::EntryFunction(_)
             | TransactionPayload::ModuleBundle(_) => TransactionExtraConfig::V1 {
                 multisig_address: None,
@@ -844,6 +875,7 @@ impl TransactionPayload {
             .into(),
             Ok(TransactionExecutableRef::Script(_)) => "script".into(),
             Ok(TransactionExecutableRef::Empty) => "empty".into(),
+            Ok(TransactionExecutableRef::CEX(_)) => "cex".into(),
             Err(_) => "deprecated_payload".into(),
         }
     }
