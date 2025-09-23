@@ -1000,7 +1000,8 @@ impl AptosVM {
                     )
                 })?;
             },
-            TransactionExecutableRef::CEX(_cex) => {
+            TransactionExecutableRef::CEX(cex) => {
+                info!("CEX transaction: {:?}", cex);
                 // CEX交易直接返回成功，不做任何状态修改
                 let success_status = TransactionStatus::Keep(ExecutionStatus::Success);
                 let empty_output = VMOutput::empty_with_status(success_status);

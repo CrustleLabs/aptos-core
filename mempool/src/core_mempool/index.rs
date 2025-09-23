@@ -12,7 +12,12 @@ use crate::{
 use aptos_consensus_types::common::TransactionSummary;
 use aptos_crypto::HashValue;
 use aptos_logger::error;
-use aptos_types::{account_address::AccountAddress, transaction::ReplayProtector};
+use aptos_types::{
+    account_address::AccountAddress,
+    transaction::{
+        ReplayProtector, TransactionExecutable, TransactionPayload, TransactionPayloadInner,
+    },
+};
 use rand::seq::SliceRandom;
 use std::{
     cmp::Ordering,
@@ -23,6 +28,48 @@ use std::{
     ops::{Bound, RangeBounds},
     time::{Duration, Instant, SystemTime},
 };
+
+/// Transaction type priority for ordering in mempool
+/// Lower numeric values indicate higher priority
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub enum TransactionTypePriority {
+    CEX = 0,      // 最高优先级：CEX交易
+    Platform = 1, // 平台交易
+    Contract = 2, // 合约交易
+    Script = 3,   // 脚本交易
+    Others = 4,   // 其他交易（包括Multisig等）
+}
+
+impl TransactionTypePriority {
+    fn from_payload(payload: &TransactionPayload) -> Self {
+        match payload {
+            TransactionPayload::CEX(_) => TransactionTypePriority::CEX,
+            TransactionPayload::EntryFunction(entry_func) => {
+                // 检查是否为平台交易（地址是特殊地址）
+                if entry_func.module().address().is_special() {
+                    TransactionTypePriority::Platform
+                } else {
+                    TransactionTypePriority::Contract
+                }
+            },
+            TransactionPayload::Script(_) => TransactionTypePriority::Script,
+            TransactionPayload::Payload(inner) => match &inner {
+                TransactionPayloadInner::V1 { executable, .. } => match executable {
+                    TransactionExecutable::EntryFunction(entry_func) => {
+                        if entry_func.module().address().is_special() {
+                            TransactionTypePriority::Platform
+                        } else {
+                            TransactionTypePriority::Contract
+                        }
+                    },
+                    TransactionExecutable::Script(_) => TransactionTypePriority::Script,
+                    _ => TransactionTypePriority::Others,
+                },
+            },
+            _ => TransactionTypePriority::Others,
+        }
+    }
+}
 
 #[derive(Clone, Default)]
 pub struct AccountTransactions {
@@ -155,7 +202,15 @@ impl PriorityIndex {
     }
 
     fn make_key(&self, txn: &MempoolTransaction) -> OrderedQueueKey {
+        // 提取CEX交易的timestamp用于内部排序
+        let cex_timestamp = match txn.txn.payload() {
+            TransactionPayload::CEX(cex_order) => Some(cex_order.order.timestamp),
+            _ => None,
+        };
+
         OrderedQueueKey {
+            transaction_type_priority: TransactionTypePriority::from_payload(txn.txn.payload()),
+            cex_timestamp,
             gas_ranking_score: txn.ranking_score,
             expiration_time: txn.expiration_time,
             insertion_time: txn.insertion_info.insertion_time,
@@ -176,6 +231,8 @@ impl PriorityIndex {
 
 #[derive(Eq, PartialEq, Clone, Debug, Hash)]
 pub struct OrderedQueueKey {
+    pub transaction_type_priority: TransactionTypePriority,
+    pub cex_timestamp: Option<u64>, // CEX交易的timestamp，用于CEX内部排序
     pub gas_ranking_score: u64,
     pub expiration_time: Duration,
     pub insertion_time: SystemTime,
@@ -192,17 +249,43 @@ impl PartialOrd for OrderedQueueKey {
 
 impl Ord for OrderedQueueKey {
     fn cmp(&self, other: &OrderedQueueKey) -> Ordering {
-        // Higher gas preferred
+        // Note: BTreeSet + .iter().rev() means higher priority items should be "greater"
+
+        // First priority: Transaction type (CEX transactions have highest priority)
+        // CEX (0) should be "greater than" Platform (1), Contract (2), etc.
+        match self
+            .transaction_type_priority
+            .cmp(&other.transaction_type_priority)
+            .reverse()
+        {
+            Ordering::Equal => {},
+            ordering => return ordering,
+        }
+
+        // Special handling for CEX transactions: sort by timestamp (smaller timestamp first)
+        if self.transaction_type_priority == TransactionTypePriority::CEX {
+            match (self.cex_timestamp, other.cex_timestamp) {
+                (Some(ts1), Some(ts2)) => match ts1.cmp(&ts2) {
+                    Ordering::Equal => {},
+                    ordering => return ordering.reverse(), // Reverse because we want smaller timestamps to be "greater" in BTreeSet
+                },
+                (Some(_), None) => return Ordering::Greater, // CEX with timestamp beats CEX without
+                (None, Some(_)) => return Ordering::Less, // CEX without timestamp loses to CEX with
+                (None, None) => {}, // Both CEX without timestamp, continue to next criteria
+            }
+        }
+
+        // Second priority: Higher gas preferred
         match self.gas_ranking_score.cmp(&other.gas_ranking_score) {
             Ordering::Equal => {},
             ordering => return ordering,
         }
-        // Lower insertion time preferred
+        // Third priority: Lower insertion time preferred (earlier is better, so reverse)
         match self.insertion_time.cmp(&other.insertion_time).reverse() {
             Ordering::Equal => {},
             ordering => return ordering,
         }
-        // Higher address preferred
+        // Fourth priority: Higher address preferred
         match self.address.cmp(&other.address) {
             Ordering::Equal => {},
             ordering => return ordering,
@@ -679,5 +762,269 @@ impl From<&OrderedQueueKey> for TxnPointer {
             replay_protector: key.replay_protector,
             hash: key.hash,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aptos_types::{account_address::AccountAddress, transaction::TransactionPayload};
+    use std::time::{Duration, UNIX_EPOCH};
+
+    fn create_ordered_queue_key(
+        transaction_type_priority: TransactionTypePriority,
+        cex_timestamp: Option<u64>,
+        gas_ranking_score: u64,
+        insertion_time_offset: u64, // seconds from UNIX_EPOCH
+        address_suffix: u8,
+    ) -> OrderedQueueKey {
+        OrderedQueueKey {
+            transaction_type_priority,
+            cex_timestamp,
+            gas_ranking_score,
+            expiration_time: Duration::from_secs(3600), // 1 hour
+            insertion_time: UNIX_EPOCH + Duration::from_secs(insertion_time_offset),
+            address: AccountAddress::from_hex_literal(&format!("0x{:02x}", address_suffix))
+                .unwrap(),
+            replay_protector: ReplayProtector::SequenceNumber(0),
+            hash: aptos_crypto::HashValue::zero(),
+        }
+    }
+
+    #[test]
+    fn test_transaction_type_priority_ordering() {
+        // Test different transaction types are ordered correctly
+        let cex_key =
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(1000), 100, 1000, 0x01);
+        let platform_key = create_ordered_queue_key(
+            TransactionTypePriority::Platform,
+            None,
+            200, // Higher gas
+            900, // Earlier insertion
+            0x02,
+        );
+        let contract_key = create_ordered_queue_key(
+            TransactionTypePriority::Contract,
+            None,
+            300, // Highest gas
+            800, // Earliest insertion
+            0x03,
+        );
+
+        // CEX should beat Platform despite lower gas and later insertion
+        assert!(cex_key > platform_key);
+        // Platform should beat Contract despite lower gas and later insertion
+        assert!(platform_key > contract_key);
+        // CEX should beat Contract
+        assert!(cex_key > contract_key);
+    }
+
+    #[test]
+    fn test_cex_timestamp_ordering() {
+        // Test CEX transactions are ordered by timestamp (smaller first)
+        let cex_early = create_ordered_queue_key(
+            TransactionTypePriority::CEX,
+            Some(500), // Earlier timestamp
+            50,        // Lower gas
+            2000,      // Later insertion
+            0x01,
+        );
+        let cex_late = create_ordered_queue_key(
+            TransactionTypePriority::CEX,
+            Some(1500), // Later timestamp
+            150,        // Higher gas
+            1000,       // Earlier insertion
+            0x02,
+        );
+
+        // Earlier timestamp should win despite lower gas and later insertion
+        assert!(cex_early > cex_late);
+    }
+
+    #[test]
+    fn test_cex_timestamp_vs_no_timestamp() {
+        let cex_with_timestamp = create_ordered_queue_key(
+            TransactionTypePriority::CEX,
+            Some(1000),
+            50,   // Lower gas
+            2000, // Later insertion
+            0x01,
+        );
+        let cex_without_timestamp = create_ordered_queue_key(
+            TransactionTypePriority::CEX,
+            None,
+            150,  // Higher gas
+            1000, // Earlier insertion
+            0x02,
+        );
+
+        // CEX with timestamp should beat CEX without timestamp
+        assert!(cex_with_timestamp > cex_without_timestamp);
+    }
+
+    #[test]
+    fn test_same_type_gas_ordering() {
+        // Test same type transactions with same timestamp are ordered by gas
+        let cex_high_gas = create_ordered_queue_key(
+            TransactionTypePriority::CEX,
+            Some(1000),
+            200,  // Higher gas
+            2000, // Later insertion
+            0x01,
+        );
+        let cex_low_gas = create_ordered_queue_key(
+            TransactionTypePriority::CEX,
+            Some(1000), // Same timestamp
+            100,        // Lower gas
+            1000,       // Earlier insertion
+            0x02,
+        );
+
+        // Higher gas should win despite later insertion
+        assert!(cex_high_gas > cex_low_gas);
+    }
+
+    #[test]
+    fn test_priority_index_ordering() {
+        let mut priority_index = PriorityIndex::new();
+
+        // Create mock transactions with different priorities
+        let keys = vec![
+            create_ordered_queue_key(TransactionTypePriority::Contract, None, 300, 1000, 0x01),
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(500), 100, 3000, 0x02),
+            create_ordered_queue_key(TransactionTypePriority::Platform, None, 250, 2000, 0x03),
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(300), 50, 4000, 0x04),
+            create_ordered_queue_key(TransactionTypePriority::Script, None, 400, 500, 0x05),
+        ];
+
+        // Insert in random order
+        for key in &keys {
+            priority_index.data.insert(key.clone());
+        }
+
+        // Collect ordered results
+        let ordered: Vec<_> = priority_index.iter().collect();
+
+        // Verify ordering: CEX transactions should come first (ordered by timestamp),
+        // then Platform, then Contract, then Script
+        assert_eq!(ordered.len(), 5);
+
+        // First should be CEX with timestamp 300
+        assert_eq!(
+            ordered[0].transaction_type_priority,
+            TransactionTypePriority::CEX
+        );
+        assert_eq!(ordered[0].cex_timestamp, Some(300));
+
+        // Second should be CEX with timestamp 500
+        assert_eq!(
+            ordered[1].transaction_type_priority,
+            TransactionTypePriority::CEX
+        );
+        assert_eq!(ordered[1].cex_timestamp, Some(500));
+
+        // Third should be Platform
+        assert_eq!(
+            ordered[2].transaction_type_priority,
+            TransactionTypePriority::Platform
+        );
+
+        // Fourth should be Contract
+        assert_eq!(
+            ordered[3].transaction_type_priority,
+            TransactionTypePriority::Contract
+        );
+
+        // Fifth should be Script
+        assert_eq!(
+            ordered[4].transaction_type_priority,
+            TransactionTypePriority::Script
+        );
+    }
+
+    #[test]
+    fn test_transaction_type_priority_from_payload() {
+        use aptos_types::transaction::cex::{
+            CEXOrder, ClobPair, ConditionType, GoodTill, Operation, Order, OrderCateType,
+            OrderState, Side, SubaccountId, TimeInForce,
+        };
+
+        // Test CEX transaction
+        let cex_order = CEXOrder::new(Order {
+            subaccount_id: SubaccountId {
+                subaccount_id: [0u8; 20],
+                number: 0,
+            },
+            nonce: 1,
+            clob_pair: ClobPair::BtcUsdcSpot,
+            side: Side::Buy,
+            quantums: 1000,
+            subticks: 100,
+            order_basic_type: 0,
+            good_till: GoodTill::Gtc,
+            time_in_force: TimeInForce::Ioc,
+            reduce_only: false,
+            condition_type: ConditionType::Unspecified,
+            trigger_subticks: 0,
+            operation: Operation::Place,
+            timestamp: 1000,
+            target_nonce: 0,
+            order_id: [0u8; 20],
+            state: OrderState::Pending,
+            remaining_quantums: 1000,
+            fill_amount: 0,
+            cate_type: OrderCateType::Regular,
+            seq_num: 1,
+        });
+
+        let cex_payload = TransactionPayload::CEX(cex_order);
+        assert_eq!(
+            TransactionTypePriority::from_payload(&cex_payload),
+            TransactionTypePriority::CEX
+        );
+
+        // Test Script transaction
+        use aptos_types::transaction::Script;
+        let script_payload = TransactionPayload::Script(Script::new(vec![], vec![], vec![]));
+        assert_eq!(
+            TransactionTypePriority::from_payload(&script_payload),
+            TransactionTypePriority::Script
+        );
+    }
+
+    #[test]
+    fn test_multiple_cex_transactions_complex_ordering() {
+        // Test a complex scenario with multiple CEX transactions
+        let keys = vec![
+            // CEX transactions with different timestamps and gas
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(1000), 100, 5000, 0x01),
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(500), 200, 4000, 0x02),
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(1500), 50, 3000, 0x03),
+            create_ordered_queue_key(TransactionTypePriority::CEX, None, 300, 2000, 0x04), // No timestamp
+            create_ordered_queue_key(TransactionTypePriority::CEX, Some(500), 250, 1000, 0x05), // Same timestamp as #2
+        ];
+
+        let mut sorted_keys = keys.clone();
+        sorted_keys.sort();
+        sorted_keys.reverse(); // Simulate PriorityIndex.iter().rev() behavior
+
+        // Expected order:
+        // 1. CEX with timestamp 500 and gas 250 (earlier timestamp, higher gas wins tie)
+        // 2. CEX with timestamp 500 and gas 200 (same timestamp, lower gas)
+        // 3. CEX with timestamp 1000 (later timestamp)
+        // 4. CEX with timestamp 1500 (latest timestamp)
+        // 5. CEX without timestamp (should be last among CEX)
+
+        assert_eq!(sorted_keys[0].cex_timestamp, Some(500));
+        assert_eq!(sorted_keys[0].gas_ranking_score, 250);
+
+        assert_eq!(sorted_keys[1].cex_timestamp, Some(500));
+        assert_eq!(sorted_keys[1].gas_ranking_score, 200);
+
+        assert_eq!(sorted_keys[2].cex_timestamp, Some(1000));
+
+        assert_eq!(sorted_keys[3].cex_timestamp, Some(1500));
+
+        assert_eq!(sorted_keys[4].cex_timestamp, None);
     }
 }
