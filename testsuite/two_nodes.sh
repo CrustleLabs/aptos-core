@@ -2,33 +2,36 @@
 
 set -e
 
-BASE_DIR="/dev/shm/two-node-testnet"
-echo "=== 修正版：两验证节点 Aptos 测试网络 ==="
+# Configuration - Change this path to match your environment
+PROJECT_DIR="/home/ubuntu/whtest/CrustleLabs/aptos-core"
 
-# 清理和创建目录
+BASE_DIR="/dev/shm/two-node-testnet"
+echo "=== Fixed Version: Two Validator Node Aptos Test Network ==="
+
+# Clean up and create directories
 rm -rf "$BASE_DIR"
 mkdir -p "$BASE_DIR"/{alice,bob}
 
-# 编译所需工具
-echo "编译必要的工具..."
+# Compile required tools
+echo "Compiling necessary tools..."
 cargo build -p aptos-node
 cargo build -p aptos
 cargo build -p aptos-framework
 
 cd "$BASE_DIR"
 
-echo "1. 为 Alice 生成密钥..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos genesis generate-keys --output-dir alice/
-echo "2. 为 Bob 生成密钥..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos genesis generate-keys --output-dir bob/
+echo "1. Generating keys for Alice..."
+"$PROJECT_DIR/target/debug/aptos" genesis generate-keys --output-dir alice/
+echo "2. Generating keys for Bob..."
+"$PROJECT_DIR/target/debug/aptos" genesis generate-keys --output-dir bob/
 
-echo "3. 编译 Move 框架..."
-# 生成 framework.mrb 文件（默认生成 head.mrb）
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos-framework release --target head
-# 重命名为 framework.mrb
+echo "3. Compiling Move framework..."
+# Generate framework.mrb file (default generates head.mrb)
+"$PROJECT_DIR/target/debug/aptos-framework" release --target head
+# Rename to framework.mrb
 mv head.mrb framework.mrb
 
-echo "4. 创建完整的布局文件..."
+echo "4. Creating complete layout file..."
 cat > layout.yaml << 'EOF'
 root_key: "D04470F43AB6AEAA4EB616B72128881EEF77346F2075FFE68E14BA7DEBD8095E"
 users:
@@ -49,8 +52,8 @@ voting_quorum_percentage: 67
 voting_power_increase_limit: 50
 EOF
 
-echo "5. 设置 Alice 验证器配置..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos genesis set-validator-configuration \
+echo "5. Setting up Alice validator configuration..."
+"$PROJECT_DIR/target/debug/aptos" genesis set-validator-configuration \
     --local-repository-dir . \
     --username alice \
     --owner-public-identity-file alice/public-keys.yaml \
@@ -58,8 +61,8 @@ echo "5. 设置 Alice 验证器配置..."
     --full-node-host 127.0.0.1:6182 \
     --stake-amount 100000000000000
 
-echo "6. 设置 Bob 验证器配置..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos genesis set-validator-configuration \
+echo "6. Setting up Bob validator configuration..."
+"$PROJECT_DIR/target/debug/aptos" genesis set-validator-configuration \
     --local-repository-dir . \
     --username bob \
     --owner-public-identity-file bob/public-keys.yaml \
@@ -67,10 +70,10 @@ echo "6. 设置 Bob 验证器配置..."
     --full-node-host 127.0.0.1:6183 \
     --stake-amount 100000000000000
 
-echo "7. 生成创世区块..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos genesis generate-genesis --local-repository-dir . --output-dir .
+echo "7. Generating genesis block..."
+"$PROJECT_DIR/target/debug/aptos" genesis generate-genesis --local-repository-dir . --output-dir .
 
-# 创建节点配置函数
+# Create node configuration function
 create_node_config() {
     local user=$1
     local val_port=$2
@@ -142,84 +145,84 @@ storage:
 EOF
 }
 
-echo "8. 创建节点配置文件..."
+echo "8. Creating node configuration files..."
 create_node_config "alice" 6180 6182 8080 9102 9101 6186
 create_node_config "bob" 6181 6183 8081 9103 9104 6187
 
-# 创建数据目录
+# Create data directories
 mkdir -p alice/data bob/data
 
-echo "9. 启动 Alice 节点..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos-node -f alice/node.yaml > alice/node.log 2>&1 &
+echo "9. Starting Alice node..."
+"$PROJECT_DIR/target/debug/aptos-node" -f alice/node.yaml > alice/node.log 2>&1 &
 ALICE_PID=$!
 
-echo "10. 启动 Bob 节点..."
-/root/Desktop/whwork/CrustleLabs/aptos-core/target/debug/aptos-node -f bob/node.yaml > bob/node.log 2>&1 &
+echo "10. Starting Bob node..."
+"$PROJECT_DIR/target/debug/aptos-node" -f bob/node.yaml > bob/node.log 2>&1 &
 BOB_PID=$!
 
-echo "Alice 节点 PID: $ALICE_PID"
-echo "Bob 节点 PID: $BOB_PID"
+echo "Alice node PID: $ALICE_PID"
+echo "Bob node PID: $BOB_PID"
 
-# 等待节点启动
-echo "11. 等待节点启动和同步..."
+# Wait for nodes to start
+echo "11. Waiting for nodes to start and synchronize..."
 for i in {1..60}; do
     if curl -s http://127.0.0.1:8080/v1 > /dev/null 2>&1 && \
        curl -s http://127.0.0.1:8081/v1 > /dev/null 2>&1; then
-        echo "✅ 两个节点都已启动成功!"
+        echo "Both nodes have started successfully!"
         echo ""
-        echo "🎉 两验证节点测试网络运行中:"
-        echo "  Alice 节点 API: http://127.0.0.1:8080"
-        echo "  Bob 节点 API:   http://127.0.0.1:8081"
+        echo "Two validator node test network is running:"
+        echo "  Alice node API: http://127.0.0.1:8080"
+        echo "  Bob node API:   http://127.0.0.1:8081"
         echo ""
         
-        # 显示区块高度
+        # Display block height
         alice_version=$(curl -s http://127.0.0.1:8080/v1/ledger_info | jq -r '.ledger_version // "0"')
         bob_version=$(curl -s http://127.0.0.1:8081/v1/ledger_info | jq -r '.ledger_version // "0"')
-        echo "  Alice 区块高度: $alice_version"
-        echo "  Bob 区块高度:   $bob_version"
+        echo "  Alice block height: $alice_version"
+        echo "  Bob block height:   $bob_version"
         echo ""
         break
     fi
-    echo "  等待中... ($i/60)"
+    echo "  Waiting... ($i/60)"
     sleep 2
 done
 
 if [ $i -eq 60 ]; then
-    echo "❌ 节点启动超时"
+    echo "Node startup timeout"
     kill $ALICE_PID $BOB_PID 2>/dev/null
     exit 1
 fi
 
-echo "💡 测试命令示例:"
+echo "Test command examples:"
 echo "  curl http://127.0.0.1:8080/v1/ledger_info"
 echo "  curl http://127.0.0.1:8081/v1/ledger_info"
 echo ""
-echo "按 Ctrl+C 停止网络"
+echo "Press Ctrl+C to stop network"
 
-# 设置信号处理
-trap "echo '正在停止节点...'; kill $ALICE_PID $BOB_PID 2>/dev/null; exit 0" INT TERM
+# Set up signal handling
+trap "echo 'Stopping nodes...'; kill $ALICE_PID $BOB_PID 2>/dev/null; exit 0" INT TERM
 
-# 监控节点状态
+# Monitor node status
 while true; do
     sleep 10
     
-    # 检查节点是否还在运行
+    # Check if nodes are still running
     if ! kill -0 $ALICE_PID 2>/dev/null; then
-        echo "⚠️  Alice 节点已停止"
+        echo "Warning: Alice node has stopped"
         break
     fi
     if ! kill -0 $BOB_PID 2>/dev/null; then
-        echo "⚠️  Bob 节点已停止"
+        echo "Warning: Bob node has stopped"
         break
     fi
     
-    # 每分钟显示一次状态
+    # Display status every minute
     if [ $(($(date +%s) % 60)) -eq 0 ]; then
         alice_version=$(curl -s http://127.0.0.1:8080/v1/ledger_info 2>/dev/null | jq -r '.ledger_version // "N/A"')
         bob_version=$(curl -s http://127.0.0.1:8081/v1/ledger_info 2>/dev/null | jq -r '.ledger_version // "N/A"')
-        echo "📊 状态更新 - Alice: $alice_version, Bob: $bob_version"
+        echo "Status update - Alice: $alice_version, Bob: $bob_version"
     fi
 done
 
-echo "网络已停止"
+echo "Network has stopped"
 

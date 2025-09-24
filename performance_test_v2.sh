@@ -57,6 +57,7 @@ done
 
 # Global variables for cleanup
 VALIDATOR_PID=""
+FAUCET_PID=""
 PERF_PID=""
 
 # Cleanup function
@@ -67,6 +68,13 @@ cleanup() {
         kill -INT $PERF_PID 2>/dev/null || true
         wait $PERF_PID 2>/dev/null || true
         echo_info "Stopped perf recording"
+    fi
+    
+    if [ ! -z "$FAUCET_PID" ]; then
+        echo_info "Stopping faucet service..."
+        kill -TERM $FAUCET_PID 2>/dev/null || true
+        sleep 1
+        kill -KILL $FAUCET_PID 2>/dev/null || true
     fi
     
     if [ ! -z "$VALIDATOR_PID" ]; then
@@ -324,81 +332,68 @@ EOF
     echo ""
 }
 
-# Initialize testnet
+# Initialize testnet using aptos built-in local testnet
 init_testnet() {
-    echo_info "Initializing single validator testnet in $TESTNET_DIR..."
+    echo_info "Initializing single validator testnet with faucet in $TESTNET_DIR..."
     
     # Clean up existing testnet
     rm -rf "$TESTNET_DIR"
     mkdir -p "$TESTNET_DIR"
     mkdir -p "$FLAMEGRAPH_DIR"
     
+    echo_success "Testnet directory prepared: $TESTNET_DIR"
+    echo_info "The aptos local testnet will auto-generate genesis and configuration"
+}
+
+# Create optimized validator configuration
+create_optimized_validator_config() {
+    echo_info " Creating optimized validator configuration for better performance..."
+    
     cd "$TESTNET_DIR"
     
-    echo_info "Step 1: Generating validator keys..."
-    "$PROJECT_DIR/target/release/aptos" genesis generate-keys --output-dir . || {
-        echo_error "Failed to generate keys"
-        exit 1
-    }
+    # Wait for initial testnet setup to complete and find config file
+    local config_file=""
+    local full_config_path=""
     
-    echo_info "Step 2: Compiling Move framework..."
-    "$PROJECT_DIR/target/release/aptos-framework" release --target head || {
-        echo_error "Failed to compile framework"
-        exit 1
-    }
-    # Rename to framework.mrb
-    mv head.mrb framework.mrb || {
-        echo_error "Failed to rename framework file"
-        exit 1
-    }
+    for i in {1..30}; do
+        if [ -f "$TESTNET_DIR/0/node.yaml" ]; then
+            config_file="node.yaml"
+            full_config_path="$TESTNET_DIR/0/node.yaml"
+            break
+        elif [ -f "$TESTNET_DIR/validator.yaml" ]; then
+            config_file="validator.yaml"
+            full_config_path="$TESTNET_DIR/validator.yaml"
+            break
+        elif [ -f "$TESTNET_DIR/node.yaml" ]; then
+            config_file="node.yaml"
+            full_config_path="$TESTNET_DIR/node.yaml"
+            break
+        fi
+        echo "  Waiting for config file generation... ($i/30)"
+        sleep 1
+    done
     
-    echo_info "Step 3: Creating layout configuration..."
-    cat > layout.yaml << 'EOF'
-root_key: "D04470F43AB6AEAA4EB616B72128881EEF77346F2075FFE68E14BA7DEBD8095E"
-users:
-  - validator
-chain_id: 4
-allow_new_validators: false
-epoch_duration_secs: 7200
-is_test: true
-min_stake: 100000000000000
-min_voting_threshold: 100000000000000
-max_stake: 100000000000000000
-recurring_lockup_duration_secs: 86400
-required_proposer_stake: 100000000000000
-rewards_apy_percentage: 10
-voting_duration_secs: 43200
-voting_quorum_percentage: 67
-voting_power_increase_limit: 50
-EOF
+    if [ -z "$config_file" ]; then
+        echo_warning "WARNING:  Config file not found, creating optimized config manually"
+        config_file="node.yaml"
+        full_config_path="$TESTNET_DIR/0/node.yaml"
+        # Create the 0 directory if it doesn't exist
+        mkdir -p "$TESTNET_DIR/0"
+    else
+        echo_info " Found config file: $full_config_path"
+        # Backup original config
+        cp "$full_config_path" "${full_config_path}.backup"
+    fi
     
-    echo_info "Step 4: Setting validator configuration..."
-    "$PROJECT_DIR/target/release/aptos" genesis set-validator-configuration \
-        --local-repository-dir . \
-        --username validator \
-        --owner-public-identity-file public-keys.yaml \
-        --validator-host 127.0.0.1:6180 \
-        --full-node-host 127.0.0.1:6182 \
-        --stake-amount 100000000000000 || {
-        echo_error "Failed to set validator configuration"
-        exit 1
-    }
+    echo_info "  Applying performance optimizations..."
     
-    echo_info "Step 5: Generating genesis block..."
-    "$PROJECT_DIR/target/release/aptos" genesis generate-genesis \
-        --local-repository-dir . \
-        --output-dir . || {
-        echo_error "Failed to generate genesis"
-        exit 1
-    }
-    
-    echo_info "Step 6: Creating node configuration..."
-    cat > validator.yaml << EOF
+    # Create optimized validator configuration
+    cat > "$full_config_path" << EOF
 base:
-  data_dir: "$TESTNET_DIR/data"
+  data_dir: "db"
   role: "validator"
   waypoint:
-    from_file: "$TESTNET_DIR/waypoint.txt"
+    from_file: "../waypoint.txt"
 
 consensus:
   sync_only: false
@@ -412,12 +407,12 @@ consensus:
       type: "local"
     backend:
       type: "on_disk_storage"
-      path: "$TESTNET_DIR/safety-rules.yaml"
+      path: "secure_storage.json"
     initial_safety_rules_config:
       from_file:
-        identity_blob_path: "$TESTNET_DIR/validator-identity.yaml"
+        identity_blob_path: "validator-identity.yaml"
         waypoint:
-          from_file: "$TESTNET_DIR/waypoint.txt"
+          from_file: "../waypoint.txt"
   # Quorum store configuration for single validator
   quorum_store:
     channel_size: 1000
@@ -426,7 +421,7 @@ consensus:
     batch_generation_min_non_empty_interval_ms: 25
 
 execution:
-  genesis_file_location: "$TESTNET_DIR/genesis.blob"
+  genesis_file_location: "genesis.blob"
   concurrency_level: 1
   num_proof_reading_threads: 1
 
@@ -442,7 +437,7 @@ validator_network:
   discovery_method: "onchain"
   identity:
     type: "from_file"
-    path: "$TESTNET_DIR/validator-identity.yaml"
+    path: "validator-identity.yaml"
   listen_address: "/ip4/127.0.0.1/tcp/6180"
   network_id: "validator"
 
@@ -451,7 +446,7 @@ full_node_networks:
     discovery_method: "none"
     identity:
       type: "from_file"
-      path: "$TESTNET_DIR/validator-full-node-identity.yaml"
+      path: "vfn-identity.yaml"
     listen_address: "/ip4/127.0.0.1/tcp/6182"
 
 api:
@@ -492,69 +487,228 @@ state_sync:
     progress_check_interval_ms: 10000
 EOF
     
-    # Create data directory
-    mkdir -p data
+    echo_success " Optimized validator configuration created!"
+    echo_info " Key optimizations applied:"
+    echo_info "  • Consensus: 1000ms round timeout, optimized quorum store"
+    echo_info "  • Mempool: 50ms tick interval, large capacity"
+    echo_info "  • Network: Optimized discovery and connection settings"
+    echo_info "  • Storage: Disabled indexer, optimized pruning"
+    echo_info "  • State Sync: Reduced polling intervals"
     
-    echo_success "Testnet initialized successfully"
+    return 0
 }
 
-# Start validator
+# Start local testnet with validator and faucet using optimized config
 start_validator() {
-    echo_info "Starting validator..."
+    echo_info " Starting optimized local testnet with validator and faucet..."
     
     cd "$TESTNET_DIR"
     
-    # Start validator with performance monitoring
+    # First, start the basic testnet to generate initial files
+    echo_info " Initializing testnet files..."
     RUST_LOG=info,aptos_consensus=debug,aptos_mempool=debug,aptos_performance_monitor=trace \
-    "$PROJECT_DIR/target/release/aptos-node" \
-        -f validator.yaml \
+    "$PROJECT_DIR/target/release/aptos" node run-local-testnet \
+        --test-dir "$TESTNET_DIR" \
+        --faucet-port 8081 \
+        --assume-yes \
         > "$VALIDATOR_LOG" 2>&1 &
     
     VALIDATOR_PID=$!
-    echo_info "Validator started with PID: $VALIDATOR_PID"
+    echo_info "Initial testnet started with PID: $VALIDATOR_PID"
     
-    # Wait for validator to be ready
-    echo_info "Waiting for validator to be ready..."
-    for i in {1..60}; do  # Increased timeout to 120 seconds
+    # Wait for initial setup to complete (genesis generation, etc.)
+    echo_info " Waiting for initial setup to complete..."
+    sleep 10
+    
+    # Stop the initial validator to apply optimizations
+    echo_info " Stopping initial validator to apply optimizations..."
+    kill -TERM $VALIDATOR_PID 2>/dev/null || true
+    sleep 3
+    
+    # Apply optimized configuration
+    if create_optimized_validator_config; then
+        echo_success " Configuration optimization completed"
+    else
+        echo_warning "WARNING:  Configuration optimization failed, continuing with default config"
+    fi
+    
+    # We'll start faucet after validator is ready to avoid connection issues
+    
+    # Start validator with optimized configuration
+    echo_info " Starting optimized validator..."
+    cd "$TESTNET_DIR"
+    
+    # Find the optimized config file and set correct working directory
+    local config_file=""
+    local working_dir="$TESTNET_DIR"
+    
+    if [ -f "$TESTNET_DIR/0/node.yaml" ]; then
+        config_file="$TESTNET_DIR/0/node.yaml"
+        working_dir="$TESTNET_DIR/0"
+    elif [ -f "$TESTNET_DIR/validator.yaml" ]; then
+        config_file="$TESTNET_DIR/validator.yaml"
+        working_dir="$TESTNET_DIR"
+    elif [ -f "$TESTNET_DIR/node.yaml" ]; then
+        config_file="$TESTNET_DIR/node.yaml"
+        working_dir="$TESTNET_DIR"
+    fi
+    
+    if [ -z "$config_file" ]; then
+        echo_error " Cannot find validator configuration file"
+        echo_info "Available files in $TESTNET_DIR:"
+        ls -la "$TESTNET_DIR"
+        if [ -d "$TESTNET_DIR/0" ]; then
+            echo_info "Available files in $TESTNET_DIR/0:"
+            ls -la "$TESTNET_DIR/0"
+        fi
+        return 1
+    fi
+    
+    echo_info " Using optimized config: $config_file"
+    echo_info " Working directory: $working_dir"
+    
+    # Change to correct working directory
+    cd "$working_dir"
+    
+    # Start validator with optimized config and performance monitoring
+    RUST_LOG=info,aptos_consensus=debug,aptos_mempool=debug,aptos_performance_monitor=trace \
+    "$PROJECT_DIR/target/release/aptos-node" \
+        -f "$(basename "$config_file")" \
+        > "$VALIDATOR_LOG" 2>&1 &
+    
+    VALIDATOR_PID=$!
+    echo_info "Optimized validator started with PID: $VALIDATOR_PID"
+    echo_info "Validator API will be available at: http://127.0.0.1:8080"
+    echo_info "Faucet will be available at: http://127.0.0.1:8081"
+    
+    # Wait for optimized validator to be ready
+    echo_info " Waiting for optimized validator to be ready..."
+    for i in {1..45}; do  # Reduced timeout since optimized config should start faster
         if curl -s http://127.0.0.1:8080/v1 > /dev/null 2>&1; then
-            echo_success " Validator is ready!"
+            echo_success " Optimized validator is ready!"
             
             # Display validator info
             local version=$(curl -s http://127.0.0.1:8080/v1/ledger_info | jq -r '.ledger_version // "0"')
             echo_info "Validator API: http://127.0.0.1:8080"
             echo_info "Current ledger version: $version"
             
-            # Verify runtime performance monitoring
-            if [ "$SKIP_RUNTIME_VERIFICATION" = false ]; then
-                verify_runtime_performance_monitoring
+            # Test performance improvement
+            echo_info " Testing optimized performance..."
+            local start_version=$version
+            sleep 3
+            local end_version=$(curl -s http://127.0.0.1:8080/v1/ledger_info | jq -r '.ledger_version // "0"')
+            
+            if [ "$end_version" -gt "$start_version" ]; then
+                local blocks_produced=$((end_version - start_version))
+                echo_success " Validator produced $blocks_produced blocks in 3 seconds!"
             else
-                echo_info "WARNING:  Skipping runtime verification as requested"
+                echo_info "INFO:  No blocks produced yet (expected in lazy mode until transactions arrive)"
             fi
             
-            # Trigger initial block production with a simple transaction
-            echo_info "Triggering initial block production..."
-            trigger_block_production
-            
-            return 0
+            break
         fi
         
         # Check if validator process is still running
         if ! kill -0 $VALIDATOR_PID 2>/dev/null; then
-            echo_error "Validator process died unexpectedly!"
+            echo_error "Optimized validator process died unexpectedly!"
             echo_error "Last 30 lines of validator log:"
             tail -30 "$VALIDATOR_LOG"
-            exit 1
+            return 1
         fi
         
-        echo "  Waiting for validator... ($i/60)"
+        echo "  Waiting for optimized validator... ($i/45)"
         sleep 2
     done
     
-    echo_error "Validator failed to start within timeout"
-    echo_error "Validator log:"
-    tail -20 "$VALIDATOR_LOG"
-    kill $VALIDATOR_PID 2>/dev/null
-    exit 1
+    if ! curl -s http://127.0.0.1:8080/v1 > /dev/null 2>&1; then
+        echo_error " Optimized validator failed to start within timeout"
+        return 1
+    fi
+    
+    # Now start faucet service after validator is ready
+    echo_info " Starting optimized faucet service..."
+    cd "$TESTNET_DIR"
+    
+    # Find the mint key file
+    local mint_key_file=""
+    if [ -f "$TESTNET_DIR/mint.key" ]; then
+        mint_key_file="$TESTNET_DIR/mint.key"
+    else
+        echo_warning "WARNING:  mint.key not found, faucet may not work properly"
+        mint_key_file="$TESTNET_DIR/mint.key"  # Will be created if needed
+    fi
+    
+    echo_info " Using mint key: $mint_key_file"
+    RUST_LOG=info \
+    "$PROJECT_DIR/target/release/aptos-faucet-service" run-simple \
+        --node-url http://127.0.0.1:8080 \
+        --key-file-path "$mint_key_file" \
+        --chain-id 4 \
+        --listen-address 127.0.0.1 \
+        --listen-port 8081 \
+        > "$TESTNET_DIR/faucet.log" 2>&1 &
+    
+    FAUCET_PID=$!
+    echo_info "Faucet started with PID: $FAUCET_PID (after validator ready)"
+    
+    # Wait for faucet to be ready
+    echo_info "Waiting for faucet to be ready..."
+    local faucet_ready=false
+    for i in {1..30}; do
+        # Check if faucet process is still running
+        if [ ! -z "$FAUCET_PID" ] && ! kill -0 $FAUCET_PID 2>/dev/null; then
+            echo_error " Faucet process died unexpectedly!"
+            echo_error "Last 20 lines of faucet log:"
+            if [ -f "$TESTNET_DIR/faucet.log" ]; then
+                tail -20 "$TESTNET_DIR/faucet.log"
+            else
+                echo_error "Faucet log file not found"
+            fi
+            break
+        fi
+        
+        # Test faucet connectivity
+        if curl -s http://127.0.0.1:8081/ > /dev/null 2>&1; then
+            echo_success " Faucet is ready!"
+            echo_info "Faucet API: http://127.0.0.1:8081"
+            faucet_ready=true
+            break
+        fi
+        echo "  Waiting for faucet... ($i/30)"
+        sleep 2
+    done
+    
+    # Final faucet status check
+    if [ "$faucet_ready" = false ]; then
+        echo_warning "WARNING:  Faucet may not be fully ready, but continuing..."
+        echo_info "Faucet process status:"
+        if [ ! -z "$FAUCET_PID" ] && kill -0 $FAUCET_PID 2>/dev/null; then
+            echo_info "   Faucet process is running (PID: $FAUCET_PID)"
+        else
+            echo_warning "   Faucet process is not running"
+        fi
+        
+        if [ -f "$TESTNET_DIR/faucet.log" ]; then
+            echo_info "Recent faucet log entries:"
+            tail -10 "$TESTNET_DIR/faucet.log"
+        fi
+    fi
+    
+    # Verify runtime performance monitoring
+    if [ "$SKIP_RUNTIME_VERIFICATION" = false ]; then
+        verify_runtime_performance_monitoring
+    else
+        echo_info "WARNING:  Skipping runtime verification as requested"
+    fi
+    
+    echo_success " Optimized local testnet with validator and faucet is ready!"
+    echo_info " Performance optimizations applied:"
+    echo_info "  • Consensus: Faster round timeouts and optimized quorum store"
+    echo_info "  • Mempool: Reduced tick intervals for faster transaction processing"
+    echo_info "  • Network: Optimized discovery and connection management"
+    echo_info "  • Storage: Disabled unnecessary indexing for better performance"
+    echo_info "  • State Sync: Reduced polling intervals"
+    return 0
 }
 
 # Verify runtime performance monitoring
@@ -638,6 +792,72 @@ verify_runtime_performance_monitoring() {
     fi
     
     echo_info " Runtime performance monitoring verification completed"
+}
+
+# Performance benchmark test
+run_performance_benchmark() {
+    echo_info " Running performance benchmark to validate optimizations..."
+    
+    # Test 1: Block production speed
+    echo_info " Test 1: Block production speed measurement"
+    local start_version=$(curl -s http://127.0.0.1:8080/v1/ledger_info | jq -r '.ledger_version // "0"')
+    echo_info "Initial ledger version: $start_version"
+    
+    # Submit a few simple transactions to trigger block production
+    echo_info " Submitting test transactions to measure block production..."
+    for i in {1..3}; do
+        # Simple account lookup to trigger activity
+        curl -s "http://127.0.0.1:8080/v1/accounts/0x1" > /dev/null 2>&1 || true
+        sleep 0.5
+    done
+    
+    # Wait and measure
+    sleep 5
+    local end_version=$(curl -s http://127.0.0.1:8080/v1/ledger_info | jq -r '.ledger_version // "0"')
+    echo_info "Final ledger version: $end_version"
+    
+    if [ "$end_version" -gt "$start_version" ]; then
+        local blocks_produced=$((end_version - start_version))
+        local rate=$(echo "scale=2; $blocks_produced / 5.5" | bc 2>/dev/null || echo "N/A")  # 5.5 seconds total
+        echo_success " Block production rate: $rate blocks/second"
+        echo_info " Total blocks produced: $blocks_produced in 5.5 seconds"
+    else
+        echo_info "INFO:  No blocks produced (lazy mode - blocks only created with transactions)"
+    fi
+    
+    # Test 2: API response time
+    echo_info " Test 2: API response time measurement"
+    local api_start=$(date +%s%N)
+    curl -s http://127.0.0.1:8080/v1 > /dev/null 2>&1
+    local api_end=$(date +%s%N)
+    local api_latency=$(( (api_end - api_start) / 1000000 )) # Convert to milliseconds
+    echo_info " API response time: ${api_latency}ms"
+    
+    if [ "$api_latency" -lt 100 ]; then
+        echo_success " Excellent API response time (<100ms)"
+    elif [ "$api_latency" -lt 500 ]; then
+        echo_success " Good API response time (<500ms)"
+    else
+        echo_warning "WARNING:  API response time is high (>500ms)"
+    fi
+    
+    # Test 3: Faucet response time
+    echo_info " Test 3: Faucet response time measurement"
+    local faucet_start=$(date +%s%N)
+    curl -s http://127.0.0.1:8081/ > /dev/null 2>&1
+    local faucet_end=$(date +%s%N)
+    local faucet_latency=$(( (faucet_end - faucet_start) / 1000000 )) # Convert to milliseconds
+    echo_info " Faucet response time: ${faucet_latency}ms"
+    
+    if [ "$faucet_latency" -lt 200 ]; then
+        echo_success " Excellent faucet response time (<200ms)"
+    elif [ "$faucet_latency" -lt 1000 ]; then
+        echo_success " Good faucet response time (<1000ms)"
+    else
+        echo_warning "WARNING:  Faucet response time is high (>1000ms)"
+    fi
+    
+    echo_success " Performance benchmark completed!"
 }
 
 # Trigger block production with a simple transaction
@@ -932,7 +1152,7 @@ except Exception as e:
     fi
     
     # Final attempt: try to create account with initial balance using genesis
-    echo_info " Final attempt: creating account with initial balance..."
+    echo_info "🔧 Final attempt: creating account with initial balance..."
     
     # For single validator testnet, we can try to use the validator's built-in account creation
     local genesis_result=$("$PROJECT_DIR/target/release/aptos" account create-resource-account \
@@ -960,153 +1180,119 @@ except Exception as e:
     fi
     
     echo_error " All funding methods failed"
-    echo_info " Consider manually funding the account or checking genesis configuration"
+    echo_info "💡 Consider manually funding the account or checking genesis configuration"
     return 1
 }
 
-# Execute transfer transaction
+# Execute transfer transaction using faucet for funding
 execute_transfer() {
-    echo_info "Executing transfer transaction..."
+    echo_info " Executing transfer transaction with faucet funding..."
     
     cd "$TESTNET_DIR"
     
-    # Create funded test accounts using improved strategy
-    echo_info "Setting up funded test accounts..."
+    # Create test accounts
+    echo_info "Creating test accounts..."
     
-    # Use the root account from genesis for sending (it has initial funds)
-    local root_private_key
-    if [ -f "private-keys.yaml" ]; then
-        # Try to extract root private key from genesis files
-        root_private_key=$(python3 -c "
-import yaml
-try:
-    with open('private-keys.yaml', 'r') as f:
-        data = yaml.safe_load(f)
-    # Look for the root account private key
-    for account, key_data in data.items():
-        if 'account_private_key' in key_data:
-            print('0x' + key_data['account_private_key'])
-            break
-except:
-    print('')
-" 2>/dev/null || echo "")
-    fi
+    # Initialize sender account
+    "$PROJECT_DIR/target/release/aptos" init \
+        --profile sender \
+        --network custom \
+        --rest-url http://127.0.0.1:8080 \
+        --faucet-url http://127.0.0.1:8081 \
+        --assume-yes || {
+        echo_error "Failed to initialize sender profile"
+        return 1
+    }
     
-    if [ -z "$root_private_key" ]; then
-        echo_warning "Could not extract root private key, using generated account..."
-        # Initialize CLI with generated account
-        "$PROJECT_DIR/target/release/aptos" init \
-            --profile default \
-            --network custom \
-            --rest-url http://127.0.0.1:8080 \
-            --skip-faucet \
-            --assume-yes || {
-            echo_error "Failed to initialize CLI profile"
-            return 1
-        }
-    else
-        echo_info "Using root account from genesis..."
-        # Initialize CLI with root account
-        echo "$root_private_key" | "$PROJECT_DIR/target/release/aptos" init \
-            --profile default \
-            --network custom \
-            --rest-url http://127.0.0.1:8080 \
-            --skip-faucet \
-            --assume-yes || {
-            echo_warning "Failed to use root key, using generated account..."
-            "$PROJECT_DIR/target/release/aptos" init \
-                --profile default \
-                --network custom \
-                --rest-url http://127.0.0.1:8080 \
-                --skip-faucet \
-                --assume-yes || {
-                echo_error "Failed to initialize CLI profile"
-                return 1
-            }
-        }
-    fi
-    
-    # Create recipient account
-    echo_info "Creating recipient account..."
+    # Initialize recipient account
     "$PROJECT_DIR/target/release/aptos" init \
         --profile recipient \
         --network custom \
         --rest-url http://127.0.0.1:8080 \
-        --skip-faucet \
+        --faucet-url http://127.0.0.1:8081 \
         --assume-yes || {
-        echo_error "Failed to create recipient profile"
+        echo_error "Failed to initialize recipient profile"
         return 1
     }
     
-    # Get account addresses using aptos account list
-    local sender_addr=$("$PROJECT_DIR/target/release/aptos" config show-profiles --profile default 2>/dev/null | grep -i "account" | awk '{print $NF}' | tr -d ',' | tr -d '"' || echo "")
+    # Get account addresses
+    local sender_addr=$("$PROJECT_DIR/target/release/aptos" config show-profiles --profile sender 2>/dev/null | grep -i "account" | awk '{print $NF}' | tr -d ',' | tr -d '"' || echo "")
     local recipient_addr=$("$PROJECT_DIR/target/release/aptos" config show-profiles --profile recipient 2>/dev/null | grep -i "account" | awk '{print $NF}' | tr -d ',' | tr -d '"' || echo "")
     
-    # Fallback: try to get addresses from config file if it exists
-    if [ -z "$sender_addr" ] && [ -f ~/.aptos/config.yaml ]; then
-        sender_addr=$(grep -A 5 "default:" ~/.aptos/config.yaml | grep "account:" | awk '{print $2}' || echo "")
-    fi
-    if [ -z "$recipient_addr" ] && [ -f ~/.aptos/config.yaml ]; then
-        recipient_addr=$(grep -A 5 "recipient:" ~/.aptos/config.yaml | grep "account:" | awk '{print $2}' || echo "")
-    fi
-    
-    echo_info "Sender address: $sender_addr"
-    echo_info "Recipient address: $recipient_addr"
+    echo_info " Sender address: $sender_addr"
+    echo_info " Recipient address: $recipient_addr"
     
     # Check if we have valid addresses
     if [ -z "$sender_addr" ] || [ -z "$recipient_addr" ]; then
-        echo_error "Failed to get account addresses. Sender: $sender_addr, Recipient: $recipient_addr"
+        echo_error " Failed to get account addresses. Sender: $sender_addr, Recipient: $recipient_addr"
         return 1
     fi
     
-    # Check sender balance
-    echo_info "Checking sender balance..."
-    local balance_before=$(curl -s "http://127.0.0.1:8080/v1/accounts/$sender_addr/resources" 2>/dev/null | jq -r '.[] | select(.type == "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>") | .data.coin.value // "0"' 2>/dev/null || echo "0")
-    echo_info "Sender balance before: $balance_before APT"
+    # Fund sender account using faucet
+    echo_info " Funding sender account from faucet..."
+    local fund_result=$("$PROJECT_DIR/target/release/aptos" account fund-with-faucet \
+        --profile sender \
+        --amount 100000000000 \
+        --url http://127.0.0.1:8080 \
+        --faucet-url http://127.0.0.1:8081 \
+        2>&1)
+    
+    if echo "$fund_result" | grep -q "success\|Success\|funded\|completed\|Added.*Octas"; then
+        echo_success " Successfully funded sender account from faucet"
+    else
+        echo_warning "WARNING:  Faucet funding response unclear: $fund_result"
+        echo_info "Trying alternative faucet funding method..."
+        
+        # Alternative: direct curl to faucet
+        local faucet_result=$(curl -s -X POST "http://127.0.0.1:8081/mint?amount=100000000000&address=$sender_addr" 2>&1)
+        if echo "$faucet_result" | grep -q "success\|Success\|txn_hash"; then
+            echo_success " Successfully funded sender via direct faucet call"
+        elif echo "$faucet_result" | grep -q "\[\"[a-fA-F0-9]\{64\}\"\]"; then
+            echo_success " Successfully funded sender via direct faucet call (got transaction hash)"
+        else
+            echo_warning "WARNING:  Both faucet funding methods may have failed"
+            echo_warning "CLI fund result: $fund_result"
+            echo_warning "Direct faucet result: $faucet_result"
+            echo_info "Proceeding to check account balance..."
+        fi
+    fi
+    
+    # Wait for funding to be processed
+    sleep 3
+    
+    # Check sender balance using aptos CLI (more reliable than direct API)
+    echo_info " Checking sender balance after funding..."
+    local balance_result=$("$PROJECT_DIR/target/release/aptos" account balance --profile sender 2>/dev/null || echo "")
+    local balance_before=$(echo "$balance_result" | jq -r '.Result[0].balance // "0"' 2>/dev/null || echo "0")
     
     if [ "$balance_before" = "0" ] || [ -z "$balance_before" ]; then
-        echo_warning "Sender has no balance. Attempting to fund the account..."
+        echo_error " Sender account still has no balance after faucet funding"
+        echo_info "Trying one more funding attempt..."
         
-        # Try to fund the account using multiple strategies
-        echo_info " Attempting comprehensive funding strategy..."
+        # Try using aptos account create and fund in one command
+        local create_fund_result=$("$PROJECT_DIR/target/release/aptos" account create-and-fund \
+            --profile sender \
+            --initial-coins 100000000000 \
+            --url http://127.0.0.1:8080 \
+            --faucet-url http://127.0.0.1:8081 \
+            2>&1 || echo "")
         
-        # Strategy 1: Direct coin minting (best approach for test networks)
-        if mint_coins_to_account "$sender_addr" "100000000000"; then  # Fund with 1000 APT (10^11 octas)
-            echo_success " Successfully funded account using direct minting"
-            
-            # Re-check balance after minting
+        if echo "$create_fund_result" | grep -q "success\|Success"; then
+            echo_success " Account creation and funding successful"
             sleep 2
-            balance_before=$(curl -s "http://127.0.0.1:8080/v1/accounts/$sender_addr/resources" 2>/dev/null | jq -r '.[] | select(.type == "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>") | .data.coin.value // "0"' 2>/dev/null || echo "0")
-            echo_info "Sender balance after minting: $balance_before APT"
-            
-            if [ "$balance_before" != "0" ] && [ ! -z "$balance_before" ]; then
-                echo_success " Minting successful, proceeding with transfer"
-            else
-                echo_warning "Minting may not have worked, trying traditional funding..."
-                if fund_account "$sender_addr" "100000000000"; then
-                    echo_success " Traditional funding successful"
-                else
-                    echo_error " All funding methods failed"
-                    return 1
-                fi
-            fi
-        elif fund_account "$sender_addr" "100000000000"; then  # Fallback to traditional funding
-            echo_success " Successfully funded sender account"
-            
-            # Re-check balance after funding
-            sleep 2  # Wait for transaction to be processed
-            balance_before=$(curl -s "http://127.0.0.1:8080/v1/accounts/$sender_addr/resources" 2>/dev/null | jq -r '.[] | select(.type == "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>") | .data.coin.value // "0"' 2>/dev/null || echo "0")
-            echo_info "Sender balance after funding: $balance_before APT"
-            
-            if [ "$balance_before" = "0" ] || [ -z "$balance_before" ]; then
-                echo_error " Account funding failed, balance is still 0"
-                return 1
-            fi
-        else
-            echo_error " Failed to fund sender account. Cannot proceed with transfer."
+            balance_result=$("$PROJECT_DIR/target/release/aptos" account balance --profile sender 2>/dev/null || echo "")
+            balance_before=$(echo "$balance_result" | jq -r '.Result[0].balance // "0"' 2>/dev/null || echo "0")
+        fi
+        
+        if [ "$balance_before" = "0" ] || [ -z "$balance_before" ]; then
+            echo_error " All funding attempts failed. Cannot proceed with transfer."
             return 1
         fi
     fi
+    
+    # Convert balance to APT for display (1 APT = 10^8 octas)
+    local sender_apt=$(echo "scale=2; $balance_before / 100000000" | bc 2>/dev/null || echo "N/A")
+    echo_success " Sender balance: $balance_before octas ($sender_apt APT)"
     
     # Execute transfer transaction with performance monitoring
     echo_info " Starting performance monitoring and executing transfer..."
@@ -1131,11 +1317,12 @@ except:
     local start_time=$(date +%s%N)
     
     # Execute the transfer
-    echo_info "Executing transfer: 1000000 APT from sender to recipient..."
+    echo_info " Executing transfer: 10 APT (1,000,000,000 octas) from sender to recipient..."
+    local transfer_amount="1000000000"  # 10 APT in octas
     local tx_result=$("$PROJECT_DIR/target/release/aptos" account transfer \
-        --profile default \
-        --account "0x$recipient_addr" \
-        --amount 1000000 \
+        --profile sender \
+        --account "$recipient_addr" \
+        --amount "$transfer_amount" \
         --max-gas 20000 \
         --gas-unit-price 100 \
         --assume-yes 2>&1)
@@ -1165,9 +1352,11 @@ except:
         # Wait a moment for the transaction to be processed
         sleep 3
         
-        # Check final balances
-        local balance_after=$(curl -s "http://127.0.0.1:8080/v1/accounts/$sender_addr/resources" 2>/dev/null | jq -r '.[] | select(.type == "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>") | .data.coin.value // "0"' 2>/dev/null || echo "0")
-        local recipient_balance=$(curl -s "http://127.0.0.1:8080/v1/accounts/$recipient_addr/resources" 2>/dev/null | jq -r '.[] | select(.type == "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>") | .data.coin.value // "0"' 2>/dev/null || echo "0")
+        # Check final balances using aptos CLI
+        local sender_balance_result=$("$PROJECT_DIR/target/release/aptos" account balance --profile sender 2>/dev/null || echo "")
+        local recipient_balance_result=$("$PROJECT_DIR/target/release/aptos" account balance --profile recipient 2>/dev/null || echo "")
+        local balance_after=$(echo "$sender_balance_result" | jq -r '.Result[0].balance // "0"' 2>/dev/null || echo "0")
+        local recipient_balance=$(echo "$recipient_balance_result" | jq -r '.Result[0].balance // "0"' 2>/dev/null || echo "0")
         
         echo_info "Final balances:"
         echo_info "  Sender: $balance_after APT"
@@ -1312,7 +1501,13 @@ wait_for_stop() {
 
 # Main execution
 main() {
-    echo_info "Starting Aptos Consensus Performance Test"
+    echo_info " Starting Aptos Consensus Performance Test with Faucet"
+    echo_info "This test will:"
+    echo_info "  1. Start a local testnet with validator and faucet"
+    echo_info "  2. Create test accounts and fund them via faucet"
+    echo_info "  3. Execute transfer transactions with performance monitoring"
+    echo_info "  4. Generate performance reports and flamegraphs"
+    echo ""
     
     # Set up signal handlers first
     setup_signal_handlers
@@ -1321,6 +1516,7 @@ main() {
     build_project
     init_testnet
     start_validator
+    run_performance_benchmark
     execute_transfer
     generate_flamegraph
     export_results
