@@ -383,6 +383,9 @@ impl<'a, S: StateView> MoveConverter<'a, S> {
                                     transaction_payload: None,
                                 })
                             },
+                            aptos_types::transaction::TransactionExecutable::CEX(_) => {
+                                bail!("CEX transactions are not supported for multisig accounts")
+                            },
                         }
                     } else {
                         match executable {
@@ -397,12 +400,16 @@ impl<'a, S: StateView> MoveConverter<'a, S> {
                             aptos_types::transaction::TransactionExecutable::Empty => {
                                 bail!("Empty executable is not supported for non-multisig transactions")
                             },
+                            aptos_types::transaction::TransactionExecutable::CEX(cex) => {
+                                TransactionPayload::CEXPayload(cex.into())
+                            },
                         }
                     }
                 },
             },
             // Deprecated.
             ModuleBundle(_) => bail!("Module bundle payload has been removed"),
+            CEX(cex) => TransactionPayload::CEXPayload(cex.into()),
         };
         Ok(ret)
     }
@@ -748,6 +755,94 @@ impl<'a, S: StateView> MoveConverter<'a, S> {
                 None => Err(anyhow::anyhow!("invalid transaction script bytecode")),
             }
         };
+
+        let try_into_cex_order = |cex_payload: crate::transaction::CEXPayload| -> Result<aptos_types::transaction::CEXOrder> {
+            use aptos_types::transaction::cex::*;
+            
+            // 简单转换 - 类似 EntryFunction 的做法
+            let subaccount_bytes = cex_payload.order.subaccount_id.inner();
+            ensure!(subaccount_bytes.len() >= 20, "Subaccount ID too short");
+            let mut subaccount_array = [0u8; 20];
+            subaccount_array.copy_from_slice(&subaccount_bytes[..20]);
+            
+            let order_id_bytes = cex_payload.order.order_id.inner();
+            ensure!(order_id_bytes.len() >= 20, "Order ID too short");
+            let mut order_id_array = [0u8; 20];
+            order_id_array.copy_from_slice(&order_id_bytes[..20]);
+            
+            let order = Order {
+                subaccount_id: SubaccountId {
+                    subaccount_id: subaccount_array,
+                    number: 0, // TODO: 从API获取
+                },
+                nonce: cex_payload.order.nonce.0,
+                // 使用简单的类型转换 - 假设客户端发送有效值
+                clob_pair: match cex_payload.order.clob_pair {
+                    1 => ClobPair::BtcUsdcSpot,
+                    2 => ClobPair::BtcUsdcPerpetual,
+                    3 => ClobPair::EthUsdcSpot,
+                    4 => ClobPair::EthUsdcPerpetual,
+                    _ => ClobPair::Unspecified,
+                },
+                side: match cex_payload.order.side {
+                    1 => Side::Buy,
+                    2 => Side::Sell,
+                    _ => Side::Unspecified,
+                },
+                quantums: cex_payload.order.quantums.0,
+                subticks: cex_payload.order.subticks.0,
+                order_basic_type: cex_payload.order.order_basic_type,
+                good_till: match cex_payload.order.good_till {
+                    1 => GoodTill::Gtc,
+                    2 => GoodTill::Gtd,
+                    _ => GoodTill::Block,
+                },
+                time_in_force: match cex_payload.order.time_in_force {
+                    1 => TimeInForce::Ioc,
+                    2 => TimeInForce::Fok,
+                    3 => TimeInForce::Aon,
+                    4 => TimeInForce::Alo,
+                    _ => TimeInForce::Unspecified,
+                },
+                reduce_only: cex_payload.order.reduce_only,
+                condition_type: match cex_payload.order.condition_type {
+                    1 => ConditionType::StopLoss,
+                    2 => ConditionType::TakeProfit,
+                    _ => ConditionType::Unspecified,
+                },
+                trigger_subticks: cex_payload.order.trigger_subticks.0,
+                operation: match cex_payload.order.operation {
+                    1 => Operation::Place,
+                    2 => Operation::Cancel,
+                    3 => Operation::Replace,
+                    _ => Operation::Unspecified,
+                },
+                timestamp: cex_payload.order.timestamp.0,
+                target_nonce: cex_payload.order.target_nonce.0,
+                order_id: order_id_array,
+                state: match cex_payload.order.state {
+                    1 => OrderState::Pending,
+                    2 => OrderState::Validated,
+                    3 => OrderState::Active,
+                    4 => OrderState::PartiallyFilled,
+                    5 => OrderState::Filled,
+                    6 => OrderState::Cancelled,
+                    7 => OrderState::Rejected,
+                    _ => OrderState::Unspecified,
+                },
+                remaining_quantums: cex_payload.order.remaining_quantums.0,
+                fill_amount: cex_payload.order.fill_amount.0,
+                cate_type: match cex_payload.order.cate_type {
+                    1 => OrderCateType::Liquidation,
+                    2 => OrderCateType::Adl,
+                    3 => OrderCateType::Funding,
+                    _ => OrderCateType::Regular,
+                },
+                seq_num: cex_payload.order.seq_num.0,
+            };
+            
+            Ok(aptos_types::transaction::CEXOrder::new(order))
+        };
         // TODO[Orderless]: After the new TransactionPayload format is fully deployed, output the TransactionPayload in V2 format here.
         let ret = match payload {
             TransactionPayload::EntryFunctionPayload(entry_func_payload) => {
@@ -824,6 +919,9 @@ impl<'a, S: StateView> MoveConverter<'a, S> {
                         transaction_payload,
                     })
                 }
+            },
+            TransactionPayload::CEXPayload(cex_payload) => {
+                Target::CEX(try_into_cex_order(cex_payload)?)
             },
             // Deprecated.
             TransactionPayload::ModuleBundlePayload(_) => {

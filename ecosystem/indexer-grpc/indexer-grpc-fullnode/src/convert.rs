@@ -205,6 +205,11 @@ pub fn convert_transaction_payload(
                 ),
             ),
         },
+        TransactionPayload::CEXPayload(_cex_payload) => {
+            // CEX payload is not supported in indexer fullnode conversion
+            // This is a placeholder that should not be reached in normal operation
+            unreachable!("CEX payload is not supported in indexer fullnode conversion")
+        },
 
         // Deprecated.
         TransactionPayload::ModuleBundlePayload(_) => {

@@ -436,6 +436,7 @@ pub fn update_counters_for_processed_chunk<T>(
                 match user_txn.payload().executable_ref() {
                     Ok(TransactionExecutableRef::Script(_)) => "script",
                     Ok(TransactionExecutableRef::EntryFunction(_)) => "function",
+                    Ok(TransactionExecutableRef::CEX(_)) => "cex",
                     Ok(TransactionExecutableRef::Empty) => "empty",
                     Err(_) => "deprecated_payload",
                 }

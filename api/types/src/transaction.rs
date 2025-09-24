@@ -949,6 +949,7 @@ pub enum TransactionPayload {
     // ordering, unfortunately.
     ModuleBundlePayload(DeprecatedModuleBundlePayload),
     MultisigPayload(MultisigPayload),
+    CEXPayload(CEXPayload),
 }
 
 impl VerifyInput for TransactionPayload {
@@ -957,6 +958,10 @@ impl VerifyInput for TransactionPayload {
             TransactionPayload::EntryFunctionPayload(inner) => inner.verify(),
             TransactionPayload::ScriptPayload(inner) => inner.verify(),
             TransactionPayload::MultisigPayload(inner) => inner.verify(),
+            TransactionPayload::CEXPayload(_) => {
+                // CEX orders have their own validation logic
+                Ok(())
+            },
 
             // Deprecated.
             TransactionPayload::ModuleBundlePayload(_) => {
@@ -1061,6 +1066,67 @@ impl VerifyInput for MultisigPayload {
         }
 
         Ok(())
+    }
+}
+
+/// A CEX order for centralized exchange transactions
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Object)]
+pub struct CEXOrderData {
+    pub subaccount_id: HexEncodedBytes,
+    pub nonce: U64,
+    pub clob_pair: u32,
+    pub side: u32,
+    pub quantums: U64,
+    pub subticks: U64,
+    pub order_basic_type: u32,
+    pub good_till: u32,
+    pub time_in_force: u32,
+    pub reduce_only: bool,
+    pub condition_type: u32,
+    pub trigger_subticks: U64,
+    pub operation: u32,
+    pub timestamp: U64,
+    pub target_nonce: U64,
+    pub order_id: HexEncodedBytes,
+    pub state: u32,
+    pub remaining_quantums: U64,
+    pub fill_amount: U64,
+    pub cate_type: u32,
+    pub seq_num: U64,
+}
+
+/// A CEX order payload for centralized exchange transactions
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Object)]
+pub struct CEXPayload {
+    pub order: CEXOrderData,
+}
+
+impl From<aptos_types::transaction::CEXOrder> for CEXPayload {
+    fn from(cex_order: aptos_types::transaction::CEXOrder) -> Self {
+        let order = CEXOrderData {
+            subaccount_id: cex_order.order.subaccount_id.subaccount_id.to_vec().into(),
+            nonce: cex_order.order.nonce.into(),
+            clob_pair: cex_order.order.clob_pair as u32,
+            side: cex_order.order.side as u32,
+            quantums: cex_order.order.quantums.into(),
+            subticks: cex_order.order.subticks.into(),
+            order_basic_type: cex_order.order.order_basic_type,
+            good_till: cex_order.order.good_till as u32,
+            time_in_force: cex_order.order.time_in_force as u32,
+            reduce_only: cex_order.order.reduce_only,
+            condition_type: cex_order.order.condition_type as u32,
+            trigger_subticks: cex_order.order.trigger_subticks.into(),
+            operation: cex_order.order.operation as u32,
+            timestamp: cex_order.order.timestamp.into(),
+            target_nonce: cex_order.order.target_nonce.into(),
+            order_id: cex_order.order.order_id.to_vec().into(),
+            state: cex_order.order.state as u32,
+            remaining_quantums: cex_order.order.remaining_quantums.into(),
+            fill_amount: cex_order.order.fill_amount.into(),
+            cate_type: cex_order.order.cate_type as u32,
+            seq_num: cex_order.order.seq_num.into(),
+        };
+        Self { order }
     }
 }
 

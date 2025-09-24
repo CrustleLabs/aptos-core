@@ -296,6 +296,7 @@ impl Session {
                         entry_function.function()
                     )
                 },
+                TransactionExecutable::CEX(_) => "cex".to_string(),
                 TransactionExecutable::Empty => {
                     unimplemented!("empty executable -- unclear how this should be handled")
                 },
@@ -309,6 +310,7 @@ impl Session {
                     entry_function.function()
                 )
             },
+            TransactionPayload::CEX(_) => "cex".to_string(),
             TransactionPayload::Script(_script) => "script".to_string(),
             TransactionPayload::Multisig(multi_sig) => {
                 name_from_executable(&multi_sig.as_transaction_executable())

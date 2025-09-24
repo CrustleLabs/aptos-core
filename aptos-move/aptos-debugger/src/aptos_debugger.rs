@@ -157,6 +157,7 @@ impl AptosDebugger {
                             entry_func.ty_args().to_vec(),
                         )
                     },
+                    TransactionExecutableRef::CEX(_) => GasProfiler::new_script(gas_meter),
                     TransactionExecutableRef::Empty => {
                         // TODO[Orderless]: Implement this
                         unimplemented!("not supported yet")
@@ -396,6 +397,7 @@ fn print_transaction_stats(sig_verified_txns: &[SignatureVerifiedTransaction], v
                         txn.function().as_str()
                     ),
                     Ok(TransactionExecutableRef::Script(_)) => "script".to_string(),
+                    Ok(TransactionExecutableRef::CEX(_)) => "cex".to_string(),
                     Ok(TransactionExecutableRef::Empty) => "empty".to_string(),
                     Err(e) => {
                         panic!("deprecated transaction payload: {}", e)
