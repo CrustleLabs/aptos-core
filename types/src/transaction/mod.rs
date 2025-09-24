@@ -717,8 +717,8 @@ pub enum TransactionPayloadInner {
 pub enum TransactionExecutable {
     Script(Script),
     EntryFunction(EntryFunction),
-    CEX(CEXOrder),
     Empty,
+    CEX(CEXOrder),
 }
 
 impl TransactionExecutable {
