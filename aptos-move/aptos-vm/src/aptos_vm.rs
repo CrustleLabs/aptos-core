@@ -990,6 +990,8 @@ impl AptosVM {
                 })?;
             },
             TransactionExecutableRef::EntryFunction(entry_fn) => {
+                let tx_hash = txn.committed_hash();
+                info!("EntryFunction transaction executed - Hash: {:?}", tx_hash);
                 session.execute(|session| {
                     self.validate_and_execute_entry_function(
                         code_storage,
@@ -1003,10 +1005,7 @@ impl AptosVM {
             },
             TransactionExecutableRef::CEX(cex) => {
                 let tx_hash = txn.committed_hash();
-                info!(
-                    "CEX transaction executed - Hash: {:?}, Order: {:?}",
-                    tx_hash, cex
-                );
+                info!("CEX transaction executed - Hash: {:?}", tx_hash);
                 // CEX交易执行正常流程，包括状态更新和nonce递增
                 session.execute(|session| {
                     self.execute_cex_transaction(
