@@ -63,6 +63,7 @@ impl TransactionTypePriority {
                         }
                     },
                     TransactionExecutable::Script(_) => TransactionTypePriority::Script,
+                    TransactionExecutable::CEX(_) => TransactionTypePriority::CEX,
                     _ => TransactionTypePriority::Others,
                 },
             },

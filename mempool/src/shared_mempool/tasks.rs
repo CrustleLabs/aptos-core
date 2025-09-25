@@ -696,6 +696,14 @@ pub(crate) fn process_quorum_store_request<NetworkClient, TransactionValidator>(
             )
         },
     };
+
+    // Log transactions if it's a batch response
+    if let QuorumStoreResponse::GetBatchResponse(ref txns) = resp {
+        for txn in txns {
+            info!("process pending transaction: {:?}", txn.committed_hash());
+        }
+    }
+
     // Send back to callback
     let result = if callback.send(Ok(resp)).is_err() {
         debug!(LogSchema::event_log(
