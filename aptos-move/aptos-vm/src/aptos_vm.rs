@@ -957,6 +957,7 @@ impl AptosVM {
         serialized_signers: &SerializedSigners,
         gas_meter: &mut impl AptosGasMeter,
         traversal_context: &mut TraversalContext<'a>,
+        txn: &SignedTransaction,
         txn_data: &TransactionMetadata,
         executable: TransactionExecutableRef<'a>, // TODO[Orderless]: Check what's the right lifetime to use here.
         log_context: &AdapterLogSchema,
@@ -1001,12 +1002,23 @@ impl AptosVM {
                 })?;
             },
             TransactionExecutableRef::CEX(cex) => {
-                info!("CEX transaction: {:?}", cex);
-                // CEX交易直接返回成功，不做任何状态修改
-                let success_status = TransactionStatus::Keep(ExecutionStatus::Success);
-                let empty_output = VMOutput::empty_with_status(success_status);
-                let vm_status = VMStatus::Executed;
-                return Ok((vm_status, empty_output));
+                let tx_hash = txn.committed_hash();
+                info!(
+                    "CEX transaction executed - Hash: {:?}, Order: {:?}",
+                    tx_hash, cex
+                );
+                // CEX交易执行正常流程，包括状态更新和nonce递增
+                session.execute(|session| {
+                    self.execute_cex_transaction(
+                        code_storage,
+                        session,
+                        serialized_signers,
+                        gas_meter,
+                        traversal_context,
+                        cex,
+                        tx_hash,
+                    )
+                })?;
             },
 
             // Not reachable as this function should only be invoked for entry or script
@@ -1332,6 +1344,42 @@ impl AptosVM {
             traversal_context,
             change_set_configs,
         )
+    }
+
+    // Execute a CEX transaction:
+    // 1. Log the CEX order details for debugging
+    // 2. Return success without actual order processing (placeholder for future implementation)
+    // This allows CEX transactions to go through normal flow including epilogue
+    fn execute_cex_transaction(
+        &self,
+        _code_storage: &impl AptosCodeStorage,
+        _session: &mut SessionExt<impl AptosMoveResolver>,
+        _serialized_signers: &SerializedSigners,
+        _gas_meter: &mut impl AptosGasMeter,
+        _traversal_context: &mut TraversalContext,
+        cex_order: &aptos_types::transaction::CEXOrder,
+        tx_hash: HashValue,
+    ) -> Result<(), VMStatus> {
+        info!("=== CEX Transaction Details ===");
+        info!("Transaction Hash: {:?}", tx_hash);
+        info!("CEX Order: {:?}", cex_order);
+        info!("Order ID: {:?}", cex_order.order.order_id);
+        info!("Clob Pair: {:?}", cex_order.order.clob_pair);
+        info!("Side: {:?}", cex_order.order.side);
+        info!("Quantums: {}", cex_order.order.quantums);
+        info!("Subticks: {}", cex_order.order.subticks);
+        info!("================================");
+
+        // CEX交易的具体逻辑可以在这里实现
+        // 目前作为占位符，直接返回成功
+        // 这样可以让交易正常执行包括epilogue阶段，从而更新sequence_number
+
+        // 可以在这里添加：
+        // 1. 订单验证逻辑
+        // 2. 订单处理逻辑
+        // 3. 状态更新逻辑
+
+        Ok(())
     }
 
     fn failure_multisig_payload_cleanup<'r>(
@@ -2020,6 +2068,7 @@ impl AptosVM {
                 &serialized_signers,
                 gas_meter,
                 &mut traversal_context,
+                txn,
                 &txn_data,
                 executable,
                 log_context,

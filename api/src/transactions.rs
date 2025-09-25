@@ -43,6 +43,7 @@ use aptos_types::{
     AptosCoinType, CoinType,
 };
 use aptos_vm::{AptosSimulationVM, AptosVM};
+use hex;
 use move_core_types::{ident_str, language_storage::ModuleId, vm_status::VMStatus};
 use poem_openapi::{
     param::{Path, Query},
@@ -1354,6 +1355,12 @@ impl TransactionsApi {
                 let signed_transactions = bcs::from_bytes(&data.0)
                     .context("Failed to deserialize input into SignedTransaction")
                     .map_err(|err| {
+                        // Log the raw transaction bytes when deserialization fails
+                        aptos_logger::error!(
+                            "Failed to deserialize transaction batch from BCS. Raw bytes (hex): 0x{}, Error: {}",
+                            hex::encode(&data.0),
+                            err
+                        );
                         SubmitTransactionError::bad_request_with_code(
                             err,
                             AptosErrorCode::InvalidInput,
@@ -1367,11 +1374,20 @@ impl TransactionsApi {
                 .into_iter()
                 .enumerate()
                 .map(|(index, txn)| {
+                    // Clone txn for error logging before it gets moved
+                    let txn_for_logging = txn.clone();
                     self.context.latest_state_view_poem(ledger_info)?
                         .as_converter(self.context.db.clone(), self.context.indexer_reader.clone())
                         .try_into_signed_transaction_poem(txn, self.context.chain_id())
                         .context(format!("Failed to create SignedTransaction from SubmitTransactionRequest at position {}", index))
                         .map_err(|err| {
+                            // Log the transaction request when JSON conversion fails
+                            aptos_logger::error!(
+                                "Failed to convert JSON to SignedTransaction at position {}. Transaction request: {:?}, Error: {}",
+                                index,
+                                txn_for_logging,
+                                err
+                            );
                             SubmitTransactionError::bad_request_with_code(
                                 err,
                                 AptosErrorCode::InvalidInput,
@@ -1795,4 +1811,106 @@ enum GetByVersionResponse {
     VersionTooNew,
     VersionTooOld,
     Found(TransactionData),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aptos_types::transaction::{
+        cex::{
+            ClobPair, ConditionType, GoodTill, Operation, Order, OrderCateType, OrderState, Side,
+            SubaccountId, TimeInForce, ORDER_ID_LENGTH,
+        },
+        CEXOrder, TransactionPayload,
+    };
+
+    fn create_test_cex_order() -> CEXOrder {
+        let subaccount_id = SubaccountId {
+            subaccount_id: [
+                0x35, 0x56, 0xE5, 0x0F, 0xFB, 0x45, 0x3A, 0x59, 0xF1, 0x05, 0xF8, 0x92, 0xD1, 0xDB,
+                0x66, 0xD7, 0x30, 0x8F, 0x81, 0xB5,
+            ], //3556e50ffb453a59f105f892d1db66d7308f81b5874903857b3f3ac2c0e0740e
+            number: 0,
+        };
+
+        let order = Order {
+            subaccount_id,
+            nonce: 0,
+            clob_pair: ClobPair::BtcUsdcSpot,
+            side: Side::Buy,
+            quantums: 1000000,
+            subticks: 50000,
+            order_basic_type: 1, // limit order
+            good_till: GoodTill::Gtc,
+            time_in_force: TimeInForce::Ioc,
+            reduce_only: false,
+            condition_type: ConditionType::Unspecified,
+            trigger_subticks: 0,
+            operation: Operation::Place,
+            timestamp: 1699000000,
+            target_nonce: 0,
+            order_id: [0u8; ORDER_ID_LENGTH],
+            state: OrderState::Pending,
+            remaining_quantums: 1000000,
+            fill_amount: 0,
+            cate_type: OrderCateType::Regular,
+            seq_num: 1,
+        };
+
+        CEXOrder::new(order)
+    }
+
+    #[test]
+    fn test_simple_cex_payload_encoding_decoding() {
+        // 使用现有的测试CEX订单
+        let cex_order = create_test_cex_order();
+
+        // 创建CEX交易payload
+        let cex_payload = TransactionPayload::CEX(cex_order.clone());
+
+        // 编码payload
+        let cex_payload_encoded_bytes =
+            bcs::to_bytes(&cex_order).expect("Failed to encode CEX transaction payload");
+
+        let encoded_bytes =
+            bcs::to_bytes(&cex_payload).expect("Failed to encode CEX transaction payload");
+        println!("编码后的字节长度: {}", cex_payload_encoded_bytes.len());
+        println!(
+            "编码后的十六进制: {}",
+            hex::encode(&cex_payload_encoded_bytes)
+        );
+        println!("编码后的字节长度: {}", encoded_bytes.len());
+        println!("编码后的十六进制: {}", hex::encode(&encoded_bytes));
+
+        // 解码payload
+        let decoded_payload: TransactionPayload =
+            bcs::from_bytes(&encoded_bytes).expect("Failed to decode CEX transaction payload");
+
+        // 验证解码后的payload类型和内容
+        match &decoded_payload {
+            TransactionPayload::CEX(decoded_order) => {
+                // 验证关键字段匹配
+                assert_eq!(
+                    decoded_order.order.subaccount_id,
+                    cex_order.order.subaccount_id
+                );
+                assert_eq!(decoded_order.order.nonce, cex_order.order.nonce);
+                assert_eq!(decoded_order.order.clob_pair, cex_order.order.clob_pair);
+                assert_eq!(decoded_order.order.side, cex_order.order.side);
+                assert_eq!(decoded_order.order.quantums, cex_order.order.quantums);
+                assert_eq!(decoded_order.order.subticks, cex_order.order.subticks);
+                assert_eq!(decoded_order.order.operation, cex_order.order.operation);
+                assert_eq!(decoded_order.order.timestamp, cex_order.order.timestamp);
+                assert_eq!(decoded_order.order.seq_num, cex_order.order.seq_num);
+
+                println!("✅ CEX订单编码解码验证通过");
+            },
+            _ => panic!("解码后的payload类型不是CEX类型"),
+        }
+
+        // 验证往返测试 - 原始对象应该完全相等
+        assert_eq!(cex_payload, decoded_payload);
+
+        println!("🎉 CEX交易payload编码解码测试通过");
+    }
 }

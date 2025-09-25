@@ -4,7 +4,7 @@
 use aptos_crypto::{ed25519::Ed25519PublicKey, HashValue};
 use aptos_types::transaction::{
     authenticator::{AccountAuthenticator, AnyPublicKey, TransactionAuthenticator},
-    CEXOrder, EntryFunction, MultisigTransactionPayload, Script, SignedTransaction,
+    EntryFunction, MultisigTransactionPayload, Script, SignedTransaction,
     TransactionExecutableRef, TransactionExtraConfig, TransactionPayload, TransactionPayloadInner,
 };
 use move_core_types::{account_address::AccountAddress, transaction_argument::TransactionArgument};
